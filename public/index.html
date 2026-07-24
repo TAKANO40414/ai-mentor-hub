@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Mentor Hub</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-left">
+      <h1>AI Mentor Hub</h1>
+      <span id="user-badge" class="badge"></span>
+    </div>
+    <button id="logout-btn" class="ghost-btn">ログアウト</button>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="ask">🤖 質問する</button>
+    <button class="tab-btn" data-tab="schedule">📅 上司の予定</button>
+    <button class="tab-btn" data-tab="tech">💡 今日の技術</button>
+    <button class="tab-btn" data-tab="chat">💬 チャット</button>
+  </nav>
+
+  <main>
+    <!-- ① AI Q&A -->
+    <section id="tab-ask" class="tab-panel active">
+      <div class="card">
+        <h2>会社のルール・技術について質問する</h2>
+        <form id="ask-form">
+          <input type="text" id="ask-input" placeholder="例：有給休暇の申請方法は？" required />
+          <button type="submit">質問する</button>
+        </form>
+        <div id="ask-result" class="answer-box hidden"></div>
+      </div>
+
+      <div id="knowledge-admin" class="card hidden">
+        <h2>ナレッジ管理（上司のみ）</h2>
+        <form id="knowledge-form" class="grid-form">
+          <input type="text" id="k-question" placeholder="質問（例：有給休暇の申請方法は？）" required />
+          <input type="text" id="k-keywords" placeholder="キーワード（カンマ区切り）" />
+          <input type="text" id="k-category" placeholder="カテゴリ（例：総務・技術）" />
+          <textarea id="k-answer" placeholder="回答内容" required></textarea>
+          <button type="submit">ナレッジを追加</button>
+        </form>
+        <ul id="knowledge-list" class="entry-list"></ul>
+      </div>
+    </section>
+
+    <!-- ② Boss schedule + appointment -->
+    <section id="tab-schedule" class="tab-panel">
+      <div class="card">
+        <h2>本日の上司の状況</h2>
+        <div id="status-banner" class="status-banner"></div>
+        <h3>空き時間</h3>
+        <ul id="free-slots" class="slot-list"></ul>
+      </div>
+
+      <div class="card">
+        <h2>アポイントを取る</h2>
+        <form id="appointment-form" class="grid-form">
+          <input type="date" id="apt-date" required />
+          <input type="time" id="apt-start" required />
+          <input type="time" id="apt-end" required />
+          <input type="text" id="apt-reason" placeholder="相談内容（任意）" />
+          <button type="submit">申請する</button>
+        </form>
+        <h3>申請状況</h3>
+        <ul id="my-appointments" class="entry-list"></ul>
+      </div>
+
+      <div id="schedule-admin" class="card hidden">
+        <h2>予定管理（上司のみ）</h2>
+        <form id="schedule-form" class="grid-form">
+          <input type="date" id="s-date" required />
+          <input type="time" id="s-start" required />
+          <input type="time" id="s-end" required />
+          <input type="text" id="s-title" placeholder="予定名" required />
+          <button type="submit">予定を追加</button>
+        </form>
+        <ul id="schedule-list" class="entry-list"></ul>
+
+        <h3>承認待ちのアポイント申請</h3>
+        <ul id="pending-appointments" class="entry-list"></ul>
+      </div>
+    </section>
+
+    <!-- ③ Today's tech tip -->
+    <section id="tab-tech" class="tab-panel">
+      <div class="card">
+        <h2>今日使う技術</h2>
+        <div id="tech-today" class="tip-list"></div>
+      </div>
+
+      <div id="tech-admin" class="card hidden">
+        <h2>技術Tip管理（上司のみ）</h2>
+        <form id="tech-form" class="grid-form">
+          <input type="date" id="tt-date" required />
+          <input type="text" id="tt-technology" placeholder="技術名（例：React Hooks）" required />
+          <input type="text" id="tt-related" placeholder="関連タスク（任意）" />
+          <textarea id="tt-description" placeholder="説明・注意点"></textarea>
+          <button type="submit">Tipを追加</button>
+        </form>
+        <ul id="tech-list" class="entry-list"></ul>
+      </div>
+    </section>
+
+    <!-- ④ Direct chat -->
+    <section id="tab-chat" class="tab-panel">
+      <div class="card chat-card">
+        <h2>上司と部下のチャット</h2>
+        <div id="chat-partner-select-wrap" class="hidden">
+          <label>チャット相手を選択
+            <select id="chat-partner-select"></select>
+          </label>
+        </div>
+        <div id="chat-thread" class="chat-thread"></div>
+        <form id="chat-form" class="chat-input-row">
+          <input type="text" id="chat-input" placeholder="メッセージを入力" required />
+          <button type="submit">送信</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
