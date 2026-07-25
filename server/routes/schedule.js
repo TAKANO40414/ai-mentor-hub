@@ -59,11 +59,25 @@ function addDays(dateStr, n) {
   return localDateStr(d);
 }
 
-router.get('/week', requireAuth, (req, res) => {
+function daysInMonth(year, month) {
+  return new Date(year, month, 0).getDate();
+}
+
+router.get('/month', requireAuth, (req, res) => {
   const db = readDB();
   const base = req.query.date || todayStr();
-  const start = mondayOf(base);
-  const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  const [year, month] = base.split('-').map(Number);
+  const firstOfMonth = `${year}-${String(month).padStart(2, '0')}-01`;
+  const lastOfMonth = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth(year, month)).padStart(2, '0')}`;
+
+  const gridStart = mondayOf(firstOfMonth);
+  const gridEnd = addDays(mondayOf(lastOfMonth), 6);
+  const days = [];
+  for (let d = gridStart; d <= gridEnd; d = addDays(d, 1)) {
+    days.push(d);
+    if (days.length > 42) break;
+  }
+
   const viewerId = req.session.user.id;
   const boss = db.users.find((u) => u.role === 'boss');
   const bossId = boss ? boss.id : null;
@@ -94,7 +108,7 @@ router.get('/week', requireAuth, (req, res) => {
       mine: a.fromUserId === viewerId
     }));
 
-  res.json({ start, days, entries, appointments });
+  res.json({ month: `${year}-${String(month).padStart(2, '0')}`, days, entries, appointments });
 });
 
 router.get('/today', requireAuth, (req, res) => {
