@@ -117,18 +117,33 @@
 
     <!-- ④ Direct chat -->
     <section id="tab-chat" class="tab-panel">
-      <div class="card chat-card">
-        <h2>上司と部下のチャット</h2>
-        <div id="chat-partner-select-wrap" class="hidden">
-          <label>チャット相手を選択
-            <select id="chat-partner-select"></select>
-          </label>
+      <div class="chat-app">
+        <div class="chat-header">
+          <button type="button" id="chat-back-btn" class="chat-icon-btn">‹</button>
+          <div class="chat-header-info">
+            <div id="chat-avatar" class="chat-avatar">?</div>
+            <div class="chat-header-text">
+              <div id="chat-header-name" class="chat-header-name"></div>
+              <div class="chat-header-status"><span class="chat-status-dot"></span>オンライン</div>
+            </div>
+          </div>
+          <button type="button" class="chat-icon-btn">⋯</button>
         </div>
-        <div id="chat-thread" class="chat-thread"></div>
-        <form id="chat-form" class="chat-input-row">
-          <input type="text" id="chat-input" placeholder="メッセージを入力" required />
-          <button type="submit">送信</button>
+
+        <div id="chat-partner-select-wrap" class="chat-partner-select-wrap hidden">
+          <select id="chat-partner-select"></select>
+        </div>
+
+        <div class="chat-thread-wrap">
+          <div id="chat-thread" class="chat-thread"></div>
+          <button type="button" id="chat-jump-latest" class="chat-jump-latest hidden">⌄ 最新のメッセージ</button>
+        </div>
+
+        <form id="chat-form" class="chat-input-bar">
+          <input type="text" id="chat-input" placeholder="メッセージを入力..." required autocomplete="off" />
+          <button type="submit" class="chat-send-btn" aria-label="送信">➤</button>
         </form>
+        <p class="chat-input-hint">Enterで送信</p>
       </div>
     </section>
 

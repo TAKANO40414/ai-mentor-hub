@@ -497,6 +497,30 @@ async function loadManualAdminList() {
 }
 
 /* ---------- ④ Chat ---------- */
+function chatPartnerName() {
+  if (currentUser.role === 'boss') {
+    const m = members.find((mm) => mm.id === activePartnerId);
+    return m ? m.name : '';
+  }
+  return bossInfo ? bossInfo.name : '';
+}
+
+function updateChatHeader() {
+  const name = chatPartnerName();
+  document.getElementById('chat-header-name').textContent = name || '相手';
+  document.getElementById('chat-avatar').textContent = (name || '?').charAt(0);
+}
+
+function hhmm(iso) {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function scrollChatToBottom() {
+  const el = document.getElementById('chat-thread');
+  el.scrollTop = el.scrollHeight;
+}
+
 function initChat() {
   if (currentUser.role === 'boss') {
     const wrap = document.getElementById('chat-partner-select-wrap');
@@ -505,6 +529,7 @@ function initChat() {
     select.innerHTML = members.map((m) => `<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('');
     select.addEventListener('change', () => {
       activePartnerId = select.value;
+      updateChatHeader();
       loadThread();
     });
     activePartnerId = members[0] ? members[0].id : null;
@@ -512,6 +537,7 @@ function initChat() {
     activePartnerId = bossInfo ? bossInfo.id : null;
   }
 
+  updateChatHeader();
   if (activePartnerId) loadThread();
 
   document.getElementById('chat-form').addEventListener('submit', async (e) => {
@@ -522,24 +548,48 @@ function initChat() {
     input.value = '';
     loadThread();
   });
+
+  document.getElementById('chat-back-btn').addEventListener('click', () => {
+    document.querySelector('.tab-btn[data-tab="schedule"]').click();
+  });
+
+  const threadEl = document.getElementById('chat-thread');
+  const jumpBtn = document.getElementById('chat-jump-latest');
+  threadEl.addEventListener('scroll', () => {
+    const distanceFromBottom = threadEl.scrollHeight - threadEl.scrollTop - threadEl.clientHeight;
+    jumpBtn.classList.toggle('hidden', distanceFromBottom < 60);
+  });
+  jumpBtn.addEventListener('click', scrollChatToBottom);
 }
 
 async function loadThread() {
   if (!activePartnerId) return;
   const { thread } = await api(`/api/chat/thread/${activePartnerId}`);
   const el = document.getElementById('chat-thread');
-  el.innerHTML = '';
+  el.innerHTML = '<div class="chat-date-divider"><span>今日</span></div>';
   if (!thread.length) {
-    el.innerHTML = '<p class="empty-msg">まだメッセージはありません。</p>';
-    return;
+    const empty = document.createElement('p');
+    empty.className = 'empty-msg';
+    empty.style.textAlign = 'center';
+    empty.textContent = 'まだメッセージはありません。';
+    el.appendChild(empty);
+  } else {
+    thread.forEach((m) => {
+      const mine = m.fromUserId === currentUser.id;
+      const senderName = mine ? currentUser.name : chatPartnerName();
+      const row = document.createElement('div');
+      row.className = `chat-row ${mine ? 'mine' : 'theirs'}`;
+      row.innerHTML = `
+        <div class="chat-row-avatar">${escapeHtml((senderName || '?').charAt(0))}</div>
+        <div class="chat-bubble-col">
+          <div class="chat-bubble ${mine ? 'mine' : 'theirs'}">${escapeHtml(m.text)}</div>
+          <div class="chat-row-meta">${mine ? '既読 ' : ''}${hhmm(m.timestamp)}</div>
+        </div>
+      `;
+      el.appendChild(row);
+    });
   }
-  thread.forEach((m) => {
-    const div = document.createElement('div');
-    div.className = `chat-bubble ${m.fromUserId === currentUser.id ? 'mine' : 'theirs'}`;
-    div.innerHTML = `${escapeHtml(m.text)}<span class="time">${timeLabel(m.timestamp)}</span>`;
-    el.appendChild(div);
-  });
-  el.scrollTop = el.scrollHeight;
+  scrollChatToBottom();
 }
 
 /* ---------- ⑤ AI summary (boss only) ---------- */
