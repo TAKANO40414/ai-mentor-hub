@@ -45,7 +45,9 @@ h3 { font-size: 1.1rem; color: var(--primary); margin-top: 1.2em; }
   width: min(400px, 90vw);
   box-shadow: 0 12px 32px rgba(30, 40, 90, 0.12);
 }
-.login-card h1 { font-size: 1.7rem; text-align: center; color: var(--primary-dark); }
+.logo-img { display: block; max-width: 100%; height: auto; }
+.logo-img-login { width: min(300px, 100%); margin: 0 auto; }
+.logo-img-header { height: 32px; width: auto; }
 .subtitle { text-align: center; color: var(--text); margin-bottom: 1.6rem; font-size: 0.95rem; }
 .login-card form { display: flex; flex-direction: column; gap: 0.9rem; }
 .login-card label { display: flex; flex-direction: column; font-size: 0.95rem; color: var(--text); font-weight: bold; gap: 0.3rem; }
@@ -146,7 +148,6 @@ h3 { font-size: 1.1rem; color: var(--primary); margin-top: 1.2em; }
   border-bottom: 1px solid var(--border);
 }
 .app-header-left { display: flex; align-items: center; gap: 0.8rem; }
-.app-header h1 { font-size: 1.4rem; color: var(--primary-dark); }
 .badge {
   background: var(--primary);
   color: white;
