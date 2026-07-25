@@ -331,16 +331,18 @@ button:hover { background: var(--primary-dark); }
 .danger-btn { background: var(--red); }
 .danger-btn:hover { background: #b53838; }
 
-.tip-list { display: flex; flex-direction: column; gap: 0.7rem; }
-.tip-card {
+.manual-section { margin-bottom: 1.2rem; }
+.manual-section:last-child { margin-bottom: 0; }
+.manual-section h3 { margin-top: 0; }
+.manual-item {
   background: linear-gradient(135deg, #eef1ff, #f7f9ff);
   border: 1px solid #dbe1ff;
   border-radius: 10px;
-  padding: 0.9rem 1rem;
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 0.5rem;
 }
-.tip-card .tech-name { font-weight: bold; color: var(--primary-dark); font-size: 1rem; }
-.tip-card .related { font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem; }
-.tip-card .desc { margin-top: 0.4rem; font-size: 0.9rem; line-height: 1.5; }
+.manual-item-title { font-weight: bold; color: var(--primary-dark); font-size: 0.95rem; }
+.manual-item-desc { margin-top: 0.3rem; font-size: 0.88rem; line-height: 1.5; }
 .empty-msg { color: var(--muted); font-size: 0.88rem; }
 
 .chat-card { display: flex; flex-direction: column; }

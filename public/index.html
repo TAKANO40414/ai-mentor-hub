@@ -20,7 +20,7 @@
   <nav class="tabs">
     <button class="tab-btn active" data-tab="schedule">📅 予定</button>
     <button class="tab-btn" data-tab="chat">💬 チャット</button>
-    <button class="tab-btn" data-tab="tech">💡 今日の技術</button>
+    <button class="tab-btn" data-tab="manual">📘 マニュアル</button>
     <button class="tab-btn" data-tab="ask">🤖 質問する</button>
   </nav>
 
@@ -76,23 +76,26 @@
       </div>
     </section>
 
-    <!-- ③ Today's tech tip -->
-    <section id="tab-tech" class="tab-panel">
+    <!-- ③ Manual (rules / technical key points / announcements) -->
+    <section id="tab-manual" class="tab-panel">
       <div class="card">
-        <h2>今日使う技術</h2>
-        <div id="tech-today" class="tip-list"></div>
+        <h2>マニュアル</h2>
+        <div id="manual-list"></div>
       </div>
 
-      <div id="tech-admin" class="card hidden">
-        <h2>技術Tip管理（上司のみ）</h2>
-        <form id="tech-form" class="grid-form">
-          <input type="date" id="tt-date" required />
-          <input type="text" id="tt-technology" placeholder="技術名（例：React Hooks）" required />
-          <input type="text" id="tt-related" placeholder="関連タスク（任意）" />
-          <textarea id="tt-description" placeholder="説明・注意点"></textarea>
-          <button type="submit">Tipを追加</button>
+      <div id="manual-admin" class="card hidden">
+        <h2>マニュアル管理（上司のみ）</h2>
+        <form id="manual-form" class="grid-form">
+          <select id="mn-category">
+            <option value="ルール">ルール</option>
+            <option value="技術要点">技術要点</option>
+            <option value="お知らせ">お知らせ</option>
+          </select>
+          <input type="text" id="mn-title" placeholder="タイトル（例：有給休暇の申請ルール）" required />
+          <textarea id="mn-description" placeholder="内容"></textarea>
+          <button type="submit">追加</button>
         </form>
-        <ul id="tech-list" class="entry-list"></ul>
+        <ul id="manual-admin-list" class="entry-list"></ul>
       </div>
     </section>
 

@@ -404,60 +404,73 @@ function renderSlotExtraField(mode) {
       : '<label>相談内容（任意）<textarea id="modal-reason"></textarea></label>';
 }
 
-/* ---------- ③ Tech tip ---------- */
-function initTech() {
-  loadTodayTechTip();
+/* ---------- ③ Manual (rules / technical key points / announcements) ---------- */
+const MANUAL_CATEGORIES = ['ルール', '技術要点', 'お知らせ'];
+
+function initManual() {
+  loadManualList();
   if (currentUser.role === 'boss') {
-    document.getElementById('tech-admin').classList.remove('hidden');
-    document.getElementById('tech-form').addEventListener('submit', async (e) => {
+    document.getElementById('manual-admin').classList.remove('hidden');
+    document.getElementById('manual-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const date = document.getElementById('tt-date').value;
-      const technology = document.getElementById('tt-technology').value.trim();
-      const relatedTask = document.getElementById('tt-related').value.trim();
-      const description = document.getElementById('tt-description').value.trim();
-      await api('/api/techtips', { method: 'POST', body: JSON.stringify({ date, technology, relatedTask, description }) });
+      const category = document.getElementById('mn-category').value;
+      const title = document.getElementById('mn-title').value.trim();
+      const description = document.getElementById('mn-description').value.trim();
+      await api('/api/manual', { method: 'POST', body: JSON.stringify({ category, title, description }) });
       e.target.reset();
-      loadTechTipList();
-      loadTodayTechTip();
+      loadManualList();
+      loadManualAdminList();
     });
-    loadTechTipList();
+    loadManualAdminList();
   }
 }
 
-async function loadTodayTechTip() {
-  const { tips } = await api('/api/techtips/today');
-  const el = document.getElementById('tech-today');
-  el.innerHTML = '';
-  if (!tips.length) {
-    el.innerHTML = '<p class="empty-msg">本日の技術情報はまだ登録されていません。</p>';
-    return;
-  }
-  tips.forEach((t) => {
-    const div = document.createElement('div');
-    div.className = 'tip-card';
-    div.innerHTML = `<div class="tech-name">今日はこの技術を使います：${escapeHtml(t.technology)}</div>${t.relatedTask ? `<div class="related">関連タスク：${escapeHtml(t.relatedTask)}</div>` : ''}${t.description ? `<div class="desc">${escapeHtml(t.description)}</div>` : ''}`;
-    el.appendChild(div);
+async function loadManualList() {
+  const { entries } = await api('/api/manual');
+  const container = document.getElementById('manual-list');
+  container.innerHTML = '';
+  MANUAL_CATEGORIES.forEach((category) => {
+    const items = entries.filter((e) => e.category === category);
+    const section = document.createElement('div');
+    section.className = 'manual-section';
+    const heading = document.createElement('h3');
+    heading.textContent = category;
+    section.appendChild(heading);
+    if (!items.length) {
+      const empty = document.createElement('p');
+      empty.className = 'empty-msg';
+      empty.textContent = '登録されている内容はありません。';
+      section.appendChild(empty);
+    } else {
+      items.forEach((item) => {
+        const div = document.createElement('div');
+        div.className = 'manual-item';
+        div.innerHTML = `<div class="manual-item-title">${escapeHtml(item.title)}</div>${item.description ? `<div class="manual-item-desc">${escapeHtml(item.description)}</div>` : ''}`;
+        section.appendChild(div);
+      });
+    }
+    container.appendChild(section);
   });
 }
 
-async function loadTechTipList() {
-  const { tips } = await api('/api/techtips');
-  const list = document.getElementById('tech-list');
+async function loadManualAdminList() {
+  const { entries } = await api('/api/manual');
+  const list = document.getElementById('manual-admin-list');
   list.innerHTML = '';
-  if (!tips.length) {
-    list.innerHTML = '<li class="empty-msg">登録されたTipはありません。</li>';
+  if (!entries.length) {
+    list.innerHTML = '<li class="empty-msg">登録された内容はありません。</li>';
     return;
   }
-  tips.forEach((t) => {
+  entries.forEach((e) => {
     const li = document.createElement('li');
-    li.innerHTML = `<div><strong>${escapeHtml(t.date)} - ${escapeHtml(t.technology)}</strong><div class="meta">${escapeHtml(t.description || '')}</div></div>`;
+    li.innerHTML = `<div><strong>[${escapeHtml(e.category)}] ${escapeHtml(e.title)}</strong><div class="meta">${escapeHtml(e.description || '')}</div></div>`;
     const del = document.createElement('button');
     del.textContent = '削除';
     del.className = 'small-btn danger-btn';
     del.onclick = async () => {
-      await api(`/api/techtips/${t.id}`, { method: 'DELETE' });
-      loadTechTipList();
-      loadTodayTechTip();
+      await api(`/api/manual/${e.id}`, { method: 'DELETE' });
+      loadManualList();
+      loadManualAdminList();
     };
     li.appendChild(del);
     list.appendChild(li);
@@ -543,7 +556,7 @@ async function init() {
   initModal();
   initAsk();
   initSchedule();
-  initTech();
+  initManual();
   initChat();
 }
 

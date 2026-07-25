@@ -52,13 +52,24 @@ function seedData() {
     ],
     appointmentRequests: [],
     announcement: null,
-    techTips: [
+    manualEntries: [
       {
-        id: 't-1',
-        date: today,
-        technology: 'React Hooks',
-        description: '本日の開発ではuseEffectの依存配列に気を付けて実装しましょう。',
-        relatedTask: 'フロントエンド改修'
+        id: 'mn-1',
+        category: 'ルール',
+        title: '有給休暇の申請ルール',
+        description: '有給休暇は勤怠システムから3営業日前までに申請してください。承認は上司が行います。'
+      },
+      {
+        id: 'mn-2',
+        category: '技術要点',
+        title: 'React Hooksの注意点',
+        description: 'useEffectの依存配列を正しく設定し、不要な再実行を避けましょう。'
+      },
+      {
+        id: 'mn-3',
+        category: 'お知らせ',
+        title: '定例会議の時間変更',
+        description: '来週から定例会議の開始時間が10時に変更になります。'
       }
     ],
     messages: [

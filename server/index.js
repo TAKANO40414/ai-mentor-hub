@@ -5,7 +5,7 @@ const path = require('path');
 const authRoutes = require('./routes/auth');
 const knowledgeRoutes = require('./routes/knowledge');
 const scheduleRoutes = require('./routes/schedule');
-const techtipRoutes = require('./routes/techtips');
+const manualRoutes = require('./routes/manual');
 const chatRoutes = require('./routes/chat');
 
 const app = express();
@@ -24,7 +24,7 @@ app.use(
 app.use('/api/auth', authRoutes);
 app.use('/api/knowledge', knowledgeRoutes);
 app.use('/api/schedule', scheduleRoutes);
-app.use('/api/techtips', techtipRoutes);
+app.use('/api/manual', manualRoutes);
 app.use('/api/chat', chatRoutes);
 
 app.use(express.static(path.join(__dirname, '..', 'public')));
