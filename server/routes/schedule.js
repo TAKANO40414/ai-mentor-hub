@@ -63,21 +63,7 @@ function daysInMonth(year, month) {
   return new Date(year, month, 0).getDate();
 }
 
-router.get('/month', requireAuth, (req, res) => {
-  const db = readDB();
-  const base = req.query.date || todayStr();
-  const [year, month] = base.split('-').map(Number);
-  const firstOfMonth = `${year}-${String(month).padStart(2, '0')}-01`;
-  const lastOfMonth = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth(year, month)).padStart(2, '0')}`;
-
-  const gridStart = mondayOf(firstOfMonth);
-  const gridEnd = addDays(mondayOf(lastOfMonth), 6);
-  const days = [];
-  for (let d = gridStart; d <= gridEnd; d = addDays(d, 1)) {
-    days.push(d);
-    if (days.length > 42) break;
-  }
-
+function buildRangeData(db, days, req) {
   const viewerId = req.session.user.id;
   const isBoss = req.session.user.role === 'boss';
   const peopleMap = new Map(db.users.map((u) => [u.id, u.name]));
@@ -109,7 +95,45 @@ router.get('/month', requireAuth, (req, res) => {
 
   const people = db.users.map((u) => ({ id: u.id, name: u.name }));
 
+  return { people, entries, appointments };
+}
+
+router.get('/month', requireAuth, (req, res) => {
+  const db = readDB();
+  const base = req.query.date || todayStr();
+  const [year, month] = base.split('-').map(Number);
+  const firstOfMonth = `${year}-${String(month).padStart(2, '0')}-01`;
+  const lastOfMonth = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth(year, month)).padStart(2, '0')}`;
+
+  const gridStart = mondayOf(firstOfMonth);
+  const gridEnd = addDays(mondayOf(lastOfMonth), 6);
+  const days = [];
+  for (let d = gridStart; d <= gridEnd; d = addDays(d, 1)) {
+    days.push(d);
+    if (days.length > 42) break;
+  }
+
+  const { people, entries, appointments } = buildRangeData(db, days, req);
   res.json({ month: `${year}-${String(month).padStart(2, '0')}`, days, people, entries, appointments });
+});
+
+router.get('/week', requireAuth, (req, res) => {
+  const db = readDB();
+  const base = req.query.date || todayStr();
+  const start = mondayOf(base);
+  const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+
+  const { people, entries, appointments } = buildRangeData(db, days, req);
+  res.json({ start, days, people, entries, appointments });
+});
+
+router.get('/day', requireAuth, (req, res) => {
+  const db = readDB();
+  const date = req.query.date || todayStr();
+  const days = [date];
+
+  const { people, entries, appointments } = buildRangeData(db, days, req);
+  res.json({ date, people, entries, appointments });
 });
 
 router.get('/today', requireAuth, (req, res) => {

@@ -94,14 +94,18 @@ async function loadKnowledgeList() {
   });
 }
 
-/* ---------- ② Schedule calendar (Google Calendar-style month view) ---------- */
+/* ---------- ② Schedule calendar (month / week / day views) ---------- */
 const CAL_WEEKDAY_LABELS = ['月', '火', '水', '木', '金', '土', '日'];
 const CAL_DEFAULT_START = '09:00';
 const CAL_DEFAULT_END = '09:30';
+const CAL_HOUR_START = 8;
+const CAL_HOUR_END = 23;
+const CAL_ROW_HEIGHT = 40;
 const PERSON_COLORS = ['#e6553f', '#3f9e6d', '#2fa5a0', '#e0a52b', '#8a6b4f', '#e0559c', '#4f8fe0', '#8b5fe0', '#707070', '#2c2c2c'];
 
-let calendarMonthDate = new Date();
-let lastMonthData = null;
+let calendarViewMode = 'month'; // 'month' | 'week' | 'day'
+let calendarCursorDate = new Date();
+let lastRangeData = null;
 let hiddenPeopleIds = new Set();
 
 function personColor(ownerId, people) {
@@ -121,39 +125,94 @@ function fmtMonthDay(dateStr) {
   return `${Number(m)}/${Number(d)}`;
 }
 
+function timeStrToMinutes(t) {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function minutesToTime(mins) {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
 function initSchedule() {
   loadTodaySchedule();
-  loadMonthCalendar();
+  loadCalendarView();
+
+  document.querySelectorAll('.cal-view-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.cal-view-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      calendarViewMode = btn.dataset.view;
+      loadCalendarView();
+    });
+  });
 
   document.getElementById('cal-prev').addEventListener('click', () => {
-    calendarMonthDate.setMonth(calendarMonthDate.getMonth() - 1);
-    loadMonthCalendar();
+    stepCalendarCursor(-1);
+    loadCalendarView();
   });
   document.getElementById('cal-next').addEventListener('click', () => {
-    calendarMonthDate.setMonth(calendarMonthDate.getMonth() + 1);
-    loadMonthCalendar();
+    stepCalendarCursor(1);
+    loadCalendarView();
   });
   document.getElementById('cal-today').addEventListener('click', () => {
-    calendarMonthDate = new Date();
-    loadMonthCalendar();
+    calendarCursorDate = new Date();
+    loadCalendarView();
   });
   document.getElementById('cal-reload').addEventListener('click', () => {
-    loadMonthCalendar();
+    loadCalendarView();
     loadTodaySchedule();
   });
   document.getElementById('cal-filter').addEventListener('click', openPeopleFilterModal);
 
   document.getElementById('calendar-grid').addEventListener('click', (e) => {
-    const chipEl = e.target.closest('.cal-chip');
+    const chipEl = e.target.closest('.cal-chip, .cal-week-event, .cal-day-item');
     if (chipEl) {
       openEventDetail(chipEl.dataset);
       return;
     }
-    const cellEl = e.target.closest('.cal-month-cell');
-    if (cellEl) {
-      openSlotModal(cellEl.dataset.date);
+
+    const addBtn = e.target.closest('.cal-day-add-btn');
+    if (addBtn) {
+      openSlotModal(addBtn.dataset.date);
+      return;
+    }
+
+    const monthCell = e.target.closest('.cal-month-cell');
+    if (monthCell) {
+      openSlotModal(monthCell.dataset.date);
+      return;
+    }
+
+    const weekCol = e.target.closest('.cal-week-col');
+    if (weekCol) {
+      const rect = weekCol.getBoundingClientRect();
+      const offsetY = e.clientY - rect.top;
+      const rawMinutes = CAL_HOUR_START * 60 + (offsetY / CAL_ROW_HEIGHT) * 60;
+      const snapped = Math.round(rawMinutes / 30) * 30;
+      const clamped = Math.min(Math.max(snapped, CAL_HOUR_START * 60), CAL_HOUR_END * 60 - 30);
+      openSlotModal(weekCol.dataset.date, minutesToTime(clamped));
+      return;
+    }
+
+    const dayRow = e.target.closest('.cal-day-row');
+    if (dayRow) {
+      const h = Number(dayRow.dataset.hour);
+      openSlotModal(dayRow.dataset.date, `${String(h).padStart(2, '0')}:00`);
     }
   });
+}
+
+function stepCalendarCursor(dir) {
+  if (calendarViewMode === 'month') {
+    calendarCursorDate.setMonth(calendarCursorDate.getMonth() + dir);
+  } else if (calendarViewMode === 'week') {
+    calendarCursorDate.setDate(calendarCursorDate.getDate() + dir * 7);
+  } else {
+    calendarCursorDate.setDate(calendarCursorDate.getDate() + dir);
+  }
 }
 
 async function loadTodaySchedule() {
@@ -163,12 +222,26 @@ async function loadTodaySchedule() {
   banner.textContent = data.canAskNow ? '✅ 今日は質問できます！' : '⏳ 現在は対応中です。空き時間はカレンダーをご確認ください。';
 }
 
-async function loadMonthCalendar() {
-  const data = await api(`/api/schedule/month?date=${isoDate(calendarMonthDate)}`);
-  lastMonthData = data;
-  document.getElementById('cal-range-label').textContent = `${calendarMonthDate.getFullYear()}年${calendarMonthDate.getMonth() + 1}月`;
-  renderCalendar(data);
-  renderCalendarLegend(data);
+async function loadCalendarView() {
+  if (calendarViewMode === 'month') {
+    const data = await api(`/api/schedule/month?date=${isoDate(calendarCursorDate)}`);
+    lastRangeData = data;
+    document.getElementById('cal-range-label').textContent = `${calendarCursorDate.getFullYear()}年${calendarCursorDate.getMonth() + 1}月`;
+    renderMonthView(data);
+  } else if (calendarViewMode === 'week') {
+    const data = await api(`/api/schedule/week?date=${isoDate(calendarCursorDate)}`);
+    lastRangeData = data;
+    document.getElementById('cal-range-label').textContent = `${fmtMonthDay(data.days[0])} 〜 ${fmtMonthDay(data.days[6])}`;
+    renderWeekView(data);
+  } else {
+    const data = await api(`/api/schedule/day?date=${isoDate(calendarCursorDate)}`);
+    lastRangeData = data;
+    document.getElementById('cal-range-label').textContent = `${calendarCursorDate.getFullYear()}年${calendarCursorDate.getMonth() + 1}月${calendarCursorDate.getDate()}日`;
+    renderDayView(data);
+  }
+  renderCalendarLegend(lastRangeData);
+  const scrollEl = document.querySelector('.calendar-scroll');
+  if (scrollEl) scrollEl.scrollLeft = 0;
 }
 
 function renderCalendarLegend(data) {
@@ -183,11 +256,11 @@ function renderCalendarLegend(data) {
 }
 
 function openPeopleFilterModal() {
-  if (!lastMonthData) return;
+  if (!lastRangeData) return;
   openModal(
     '表示する人を選択',
     (body) => {
-      body.innerHTML = lastMonthData.people
+      body.innerHTML = lastRangeData.people
         .map(
           (p, i) => `
             <label style="flex-direction: row; align-items: center; gap: 0.5rem;">
@@ -208,14 +281,48 @@ function openPeopleFilterModal() {
             if (!cb.checked) hiddenPeopleIds.add(cb.dataset.personId);
           });
           closeModal();
-          renderCalendar(lastMonthData);
+          rerenderCurrentView();
         })
       );
     }
   );
 }
 
-function renderCalendar(data) {
+function rerenderCurrentView() {
+  if (!lastRangeData) return;
+  if (calendarViewMode === 'month') renderMonthView(lastRangeData);
+  else if (calendarViewMode === 'week') renderWeekView(lastRangeData);
+  else renderDayView(lastRangeData);
+}
+
+function buildTimedItems(data, date) {
+  const items = [];
+
+  data.entries
+    .filter((e) => e.date === date && !hiddenPeopleIds.has(e.ownerId))
+    .forEach((e) => {
+      const color = personColor(e.ownerId, data.people);
+      const label = `${escapeHtml(e.ownerName)}：${escapeHtml(e.title)}`;
+      const dataAttrs = `data-kind="entry" data-id="${e.id}" data-date="${e.date}" data-start="${e.startTime}" data-end="${e.endTime}" data-title="${escapeHtml(e.title)}" data-ownername="${escapeHtml(e.ownerName)}" data-owner="${e.ownerId}"`;
+      items.push({ start: timeStrToMinutes(e.startTime), end: timeStrToMinutes(e.endTime), style: `background:${color}`, label, dataAttrs });
+    });
+
+  data.appointments
+    .filter((a) => a.date === date)
+    .forEach((a) => {
+      const label = a.mine ? '申請中（あなた）' : `${escapeHtml(a.fromUserName)}（申請中）`;
+      const dataAttrs = `data-kind="pending" data-id="${a.id}" data-date="${a.date}" data-start="${a.startTime}" data-end="${a.endTime}" data-reason="${escapeHtml(a.reason || '')}" data-fromusername="${escapeHtml(a.fromUserName || '')}" data-mine="${a.mine}"`;
+      items.push({ start: timeStrToMinutes(a.startTime), end: timeStrToMinutes(a.endTime), className: `pending${a.mine ? ' mine' : ''}`, label, dataAttrs });
+    });
+
+  return items.sort((a, b) => a.start - b.start);
+}
+
+/* ----- Month view ----- */
+function renderMonthView(data) {
+  const grid = document.getElementById('calendar-grid');
+  grid.className = 'calendar-grid';
+
   const today = isoDate(new Date());
   const parts = CAL_WEEKDAY_LABELS.map((w) => `<div class="cal-month-headcell">${w}</div>`);
 
@@ -223,7 +330,7 @@ function renderCalendar(data) {
     const inMonth = date.slice(0, 7) === data.month;
     const isToday = date === today;
     const dayNum = Number(date.slice(8, 10));
-    const items = buildDayItems(data, date);
+    const items = buildTimedItems(data, date);
     const chipHtml = items
       .map((item) => `<div class="cal-chip ${item.className || ''}" style="${item.style || ''}" ${item.dataAttrs}>${item.label}</div>`)
       .join('');
@@ -235,35 +342,91 @@ function renderCalendar(data) {
     `);
   });
 
-  document.getElementById('calendar-grid').innerHTML = parts.join('');
+  grid.innerHTML = parts.join('');
 }
 
-function buildDayItems(data, date) {
-  const items = [];
+/* ----- Week view ----- */
+function renderWeekView(data) {
+  const grid = document.getElementById('calendar-grid');
+  grid.className = 'calendar-grid view-week';
 
-  data.entries
-    .filter((e) => e.date === date && !hiddenPeopleIds.has(e.ownerId))
-    .forEach((e) => {
-      const color = personColor(e.ownerId, data.people);
-      const label = `${escapeHtml(e.ownerName)}：${escapeHtml(e.title)}`;
-      const dataAttrs = `data-kind="entry" data-id="${e.id}" data-date="${e.date}" data-start="${e.startTime}" data-end="${e.endTime}" data-title="${escapeHtml(e.title)}" data-ownername="${escapeHtml(e.ownerName)}" data-owner="${e.ownerId}"`;
-      items.push({ start: timeStrToMinutes(e.startTime), style: `background:${color}`, label, dataAttrs });
-    });
+  const bodyHeight = (CAL_HOUR_END - CAL_HOUR_START) * CAL_ROW_HEIGHT;
+  const today = isoDate(new Date());
+  const parts = ['<div class="cal-corner"></div>'];
 
-  data.appointments
-    .filter((a) => a.date === date)
-    .forEach((a) => {
-      const label = a.mine ? '申請中（あなた）' : `${escapeHtml(a.fromUserName)}（申請中）`;
-      const dataAttrs = `data-kind="pending" data-id="${a.id}" data-date="${a.date}" data-start="${a.startTime}" data-end="${a.endTime}" data-reason="${escapeHtml(a.reason || '')}" data-fromusername="${escapeHtml(a.fromUserName || '')}" data-mine="${a.mine}"`;
-      items.push({ start: timeStrToMinutes(a.startTime), className: `pending${a.mine ? ' mine' : ''}`, label, dataAttrs });
-    });
+  data.days.forEach((date, i) => {
+    const isToday = date === today ? ' is-today' : '';
+    parts.push(`<div class="cal-week-headcell${isToday}">${CAL_WEEKDAY_LABELS[i]}<br>${fmtMonthDay(date)}</div>`);
+  });
 
-  return items.sort((a, b) => a.start - b.start);
+  const timeLabels = [];
+  for (let h = CAL_HOUR_START; h <= CAL_HOUR_END; h++) {
+    timeLabels.push(`<span class="cal-time-label" style="top:${(h - CAL_HOUR_START) * CAL_ROW_HEIGHT}px">${h}:00</span>`);
+  }
+  parts.push(`<div class="cal-time-axis" style="height:${bodyHeight}px">${timeLabels.join('')}</div>`);
+
+  data.days.forEach((date) => {
+    const items = buildTimedItems(data, date);
+    const html = items
+      .map((item, idx) => {
+        const [s, en] = clampToHourRange(item.start, item.end);
+        if (en <= s) return '';
+        const top = ((s - CAL_HOUR_START * 60) / 60) * CAL_ROW_HEIGHT;
+        const height = Math.max(16, ((en - s) / 60) * CAL_ROW_HEIGHT - 2);
+        const lane = idx % 3;
+        const left = 2 + lane * 4;
+        const width = 96 - lane * 4;
+        return `<div class="cal-week-event ${item.className || ''}" style="top:${top}px;height:${height}px;left:${left}%;width:${width}%;${item.style || ''}" ${item.dataAttrs}>${item.label}</div>`;
+      })
+      .join('');
+    parts.push(
+      `<div class="cal-week-col" data-date="${date}" style="height:${bodyHeight}px;background-size:100% ${CAL_ROW_HEIGHT}px">${html}</div>`
+    );
+  });
+
+  grid.innerHTML = parts.join('');
 }
 
-function timeStrToMinutes(t) {
-  const [h, m] = t.split(':').map(Number);
-  return h * 60 + m;
+function clampToHourRange(startMin, endMin) {
+  const rangeStart = CAL_HOUR_START * 60;
+  const rangeEnd = CAL_HOUR_END * 60;
+  return [Math.max(startMin, rangeStart), Math.min(endMin, rangeEnd)];
+}
+
+/* ----- Day view ----- */
+function renderDayView(data) {
+  const grid = document.getElementById('calendar-grid');
+  grid.className = 'calendar-grid view-day';
+
+  const items = buildTimedItems(data, data.date);
+  const grouped = {};
+  items.forEach((item) => {
+    const h = Math.max(CAL_HOUR_START, Math.min(CAL_HOUR_END, Math.floor(item.start / 60)));
+    if (!grouped[h]) grouped[h] = [];
+    grouped[h].push(item);
+  });
+
+  const rows = [];
+  for (let h = CAL_HOUR_START; h <= CAL_HOUR_END; h++) {
+    const hourItems = grouped[h] || [];
+    const itemsHtml = hourItems
+      .map((item) => `<div class="cal-day-item ${item.className || ''}" style="${item.style || ''}" ${item.dataAttrs}>${item.label}</div>`)
+      .join('');
+    rows.push(`
+      <div class="cal-day-row" data-hour="${h}" data-date="${data.date}">
+        <div class="cal-day-row-time">${String(h).padStart(2, '0')}:00</div>
+        <div class="cal-day-row-content">${itemsHtml}</div>
+      </div>
+    `);
+  }
+
+  grid.innerHTML = `
+    <div class="cal-day-list-header">
+      <div class="cal-day-list-date">${escapeHtml(fmtMonthDay(data.date))}</div>
+      <button type="button" class="cal-day-add-btn" data-date="${data.date}">+</button>
+    </div>
+    <div class="cal-day-rows">${rows.join('')}</div>
+  `;
 }
 
 /* ---------- Modal helpers ---------- */
@@ -312,7 +475,7 @@ function openEventDetail(ds) {
               makeButton('削除', 'danger-btn', async () => {
                 await api(`/api/schedule/entries/${ds.id}`, { method: 'DELETE' });
                 closeModal();
-                loadMonthCalendar();
+                loadCalendarView();
                 loadTodaySchedule();
               })
             );
@@ -334,7 +497,7 @@ function openEventDetail(ds) {
             makeButton('承認', '', async () => {
               await api(`/api/schedule/appointments/${ds.id}/decide`, { method: 'POST', body: JSON.stringify({ decision: 'approved' }) });
               closeModal();
-              loadMonthCalendar();
+              loadCalendarView();
               loadTodaySchedule();
             })
           );
@@ -342,7 +505,7 @@ function openEventDetail(ds) {
             makeButton('却下', 'danger-btn', async () => {
               await api(`/api/schedule/appointments/${ds.id}/decide`, { method: 'POST', body: JSON.stringify({ decision: 'rejected' }) });
               closeModal();
-              loadMonthCalendar();
+              loadCalendarView();
               loadTodaySchedule();
             })
           );
@@ -356,9 +519,9 @@ function openEventDetail(ds) {
   }
 }
 
-function openSlotModal(date) {
-  const startTime = CAL_DEFAULT_START;
-  const endTime = CAL_DEFAULT_END;
+function openSlotModal(date, startTimeOverride) {
+  const startTime = startTimeOverride || CAL_DEFAULT_START;
+  const endTime = startTimeOverride ? minutesToTime(timeStrToMinutes(startTimeOverride) + 30) : CAL_DEFAULT_END;
 
   if (currentUser.role === 'boss') {
     openModal(
@@ -386,7 +549,7 @@ function openSlotModal(date) {
               body: JSON.stringify({ date, startTime: start, endTime: end, title })
             });
             closeModal();
-            loadMonthCalendar();
+            loadCalendarView();
             loadTodaySchedule();
           })
         );
@@ -441,7 +604,7 @@ function openSlotModal(date) {
               });
             }
             closeModal();
-            loadMonthCalendar();
+            loadCalendarView();
             loadTodaySchedule();
           } catch (err) {
             alert(err.message);

@@ -37,20 +37,27 @@
 
       <div class="card calendar-card">
         <div class="calendar-header">
-          <button type="button" id="cal-prev" class="ghost-btn small-btn">‹ 前月</button>
+          <button type="button" id="cal-prev" class="ghost-btn small-btn">‹</button>
           <h2 id="cal-range-label"></h2>
+          <button type="button" id="cal-next" class="ghost-btn small-btn">›</button>
+        </div>
+        <div class="calendar-toolbar">
+          <div class="cal-view-switch">
+            <button type="button" class="cal-view-btn active" data-view="month">月</button>
+            <button type="button" class="cal-view-btn" data-view="week">週</button>
+            <button type="button" class="cal-view-btn" data-view="day">日</button>
+          </div>
           <div class="calendar-header-right">
             <button type="button" id="cal-filter" class="ghost-btn small-btn">▽ 抽出</button>
             <button type="button" id="cal-reload" class="ghost-btn small-btn">↻ 再読み込み</button>
-            <button type="button" id="cal-today" class="ghost-btn small-btn">今月</button>
-            <button type="button" id="cal-next" class="ghost-btn small-btn">次月 ›</button>
+            <button type="button" id="cal-today" class="ghost-btn small-btn">今日</button>
           </div>
         </div>
         <div id="calendar-legend" class="calendar-legend"></div>
         <div class="calendar-scroll">
           <div id="calendar-grid" class="calendar-grid"></div>
         </div>
-        <p class="empty-msg calendar-hint">日付をクリックすると、予定の追加・上司へのアポイント申請ができます。</p>
+        <p class="empty-msg calendar-hint">日付や時間帯をクリックすると、予定の追加・上司へのアポイント申請ができます。</p>
       </div>
     </section>
 
