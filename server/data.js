@@ -4,8 +4,15 @@ const { hashPassword } = require('./crypto-util');
 
 const DB_PATH = path.join(__dirname, '..', 'data', 'db.json');
 
+function localDateStr(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  return localDateStr(new Date());
 }
 
 function seedData() {
@@ -78,4 +85,4 @@ function writeDB(db) {
   fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
 }
 
-module.exports = { readDB, writeDB, todayStr };
+module.exports = { readDB, writeDB, todayStr, localDateStr };

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
-const { readDB, writeDB, todayStr } = require('../data');
+const { readDB, writeDB, todayStr, localDateStr } = require('../data');
 const { requireAuth, requireBoss } = require('../middleware');
 
 const WORK_START = '09:00';
@@ -45,6 +45,49 @@ function currentStatus(entries) {
   const withinWork = nowMinutes >= timeToMinutes(WORK_START) && nowMinutes < timeToMinutes(WORK_END);
   return withinWork && !busyNow;
 }
+
+function mondayOf(dateStr) {
+  const d = new Date(`${dateStr}T00:00:00`);
+  const diff = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - diff);
+  return localDateStr(d);
+}
+
+function addDays(dateStr, n) {
+  const d = new Date(`${dateStr}T00:00:00`);
+  d.setDate(d.getDate() + n);
+  return localDateStr(d);
+}
+
+router.get('/week', requireAuth, (req, res) => {
+  const db = readDB();
+  const base = req.query.date || todayStr();
+  const start = mondayOf(base);
+  const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  const isBoss = req.session.user.role === 'boss';
+
+  const entries = db.scheduleEntries
+    .filter((e) => days.includes(e.date))
+    .map((e) =>
+      isBoss
+        ? { id: e.id, date: e.date, startTime: e.startTime, endTime: e.endTime, title: e.title, status: e.status }
+        : { date: e.date, startTime: e.startTime, endTime: e.endTime, status: e.status }
+    );
+
+  const appointments = db.appointmentRequests
+    .filter((a) => days.includes(a.date) && a.status === 'pending' && (isBoss || a.fromUserId === req.session.user.id))
+    .map((a) => ({
+      id: a.id,
+      date: a.date,
+      startTime: a.startTime,
+      endTime: a.endTime,
+      reason: a.reason,
+      fromUserName: a.fromUserName,
+      mine: a.fromUserId === req.session.user.id
+    }));
+
+  res.json({ start, days, entries, appointments });
+});
 
 router.get('/today', requireAuth, (req, res) => {
   const db = readDB();
