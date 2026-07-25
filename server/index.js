@@ -30,5 +30,5 @@ app.use('/api/chat', chatRoutes);
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.listen(PORT, () => {
-  console.log(`AI Mentor Hub running at http://localhost:${PORT}`);
+  console.log(`ジェネギャすきる running at http://localhost:${PORT}`);
 });
