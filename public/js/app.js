@@ -215,12 +215,12 @@ function buildDayItems(data, date) {
       if (en <= s) return;
       const top = ((s - CAL_HOUR_START * 60) / 60) * CAL_ROW_HEIGHT;
       const height = Math.max(18, ((en - s) / 60) * CAL_ROW_HEIGHT - 2);
-      const hasDetail = Boolean(e.id);
-      const label = hasDetail ? escapeHtml(e.title) : '対応中';
-      const dataAttrs = hasDetail
+      const mine = e.source === 'mine';
+      const label = mine ? escapeHtml(e.title) : '上司: 対応中';
+      const dataAttrs = mine
         ? `data-kind="entry" data-id="${e.id}" data-date="${e.date}" data-start="${e.startTime}" data-end="${e.endTime}" data-title="${escapeHtml(e.title)}"`
         : `data-kind="entry" data-date="${e.date}" data-start="${e.startTime}" data-end="${e.endTime}"`;
-      items.push({ start: s, top, height, className: hasDetail ? 'busy' : 'busy-plain', label, dataAttrs });
+      items.push({ start: s, top, height, className: mine ? 'busy' : 'boss-busy', label, dataAttrs });
     });
 
   data.appointments
@@ -296,7 +296,7 @@ function openEventDetail(ds) {
       );
     } else {
       openModal('予定の詳細', (body) => {
-        body.innerHTML = `<p class="modal-meta">${escapeHtml(ds.date)} ${escapeHtml(ds.start)} - ${escapeHtml(ds.end)}<br>対応中です（詳細は上司のみ確認できます）</p>`;
+        body.innerHTML = `<p class="modal-meta">${escapeHtml(ds.date)} ${escapeHtml(ds.start)} - ${escapeHtml(ds.end)}<br>上司の予定です（詳細は上司のみ確認できます）</p>`;
       });
     }
     return;
@@ -376,37 +376,72 @@ function openSlotModal(date, offsetY) {
       }
     );
   } else {
+    let mode = 'own';
+    let submitBtn;
+
     openModal(
-      'アポイントを申請',
+      '予定を追加 / アポイント申請',
       (body) => {
         body.innerHTML = `
           <p class="modal-meta">${escapeHtml(fmtMonthDay(date))}</p>
+          <label>種類
+            <select id="modal-type">
+              <option value="own">自分の予定を追加</option>
+              <option value="appointment">上司にアポイントを申請</option>
+            </select>
+          </label>
           <label>開始時刻<input type="time" id="modal-start" value="${startTime}" /></label>
           <label>終了時刻<input type="time" id="modal-end" value="${endTime}" /></label>
-          <label>相談内容（任意）<textarea id="modal-reason"></textarea></label>
+          <div id="modal-extra"></div>
         `;
+        renderSlotExtraField(mode);
+        document.getElementById('modal-type').addEventListener('change', (e) => {
+          mode = e.target.value;
+          renderSlotExtraField(mode);
+          if (submitBtn) submitBtn.textContent = mode === 'own' ? '自分の予定に追加' : '申請する';
+        });
       },
       (actions) => {
-        actions.appendChild(
-          makeButton('申請する', '', async () => {
-            const start = document.getElementById('modal-start').value;
-            const end = document.getElementById('modal-end').value;
-            const reason = document.getElementById('modal-reason').value.trim();
-            try {
+        submitBtn = makeButton('自分の予定に追加', '', async () => {
+          const start = document.getElementById('modal-start').value;
+          const end = document.getElementById('modal-end').value;
+          try {
+            if (mode === 'own') {
+              const title = document.getElementById('modal-title-input').value.trim();
+              if (!title) {
+                alert('予定名を入力してください。');
+                return;
+              }
+              await api('/api/schedule/entries', {
+                method: 'POST',
+                body: JSON.stringify({ date, startTime: start, endTime: end, title })
+              });
+            } else {
+              const reason = document.getElementById('modal-reason').value.trim();
               await api('/api/schedule/appointments', {
                 method: 'POST',
                 body: JSON.stringify({ date, startTime: start, endTime: end, reason })
               });
-              closeModal();
-              loadWeekCalendar();
-            } catch (err) {
-              alert(err.message);
             }
-          })
-        );
+            closeModal();
+            loadWeekCalendar();
+            loadTodaySchedule();
+          } catch (err) {
+            alert(err.message);
+          }
+        });
+        actions.appendChild(submitBtn);
       }
     );
   }
+}
+
+function renderSlotExtraField(mode) {
+  const el = document.getElementById('modal-extra');
+  el.innerHTML =
+    mode === 'own'
+      ? '<label>予定名<input type="text" id="modal-title-input" placeholder="例：資料作成" /></label>'
+      : '<label>相談内容（任意）<textarea id="modal-reason"></textarea></label>';
 }
 
 /* ---------- ③ Tech tip ---------- */

@@ -252,9 +252,23 @@ button:hover { background: var(--primary-dark); }
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 .cal-event.busy { background: var(--primary); }
-.cal-event.busy-plain { background: #94a3b8; }
+.cal-event.boss-busy { background: #0e9488; }
 .cal-event.pending { background: #e2a33d; }
 .cal-event.pending.mine { background: #c98a1f; }
+
+.calendar-legend {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.7rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.legend-item { display: inline-flex; align-items: center; gap: 0.35rem; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.legend-dot.mine { background: var(--primary); }
+.legend-dot.boss { background: #0e9488; }
+.legend-dot.pending { background: #e2a33d; }
 
 /* Modal */
 .modal-overlay {

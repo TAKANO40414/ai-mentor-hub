@@ -18,15 +18,42 @@
   <div id="announcement-banner" class="announcement-banner hidden"></div>
 
   <nav class="tabs">
-    <button class="tab-btn active" data-tab="ask">🤖 質問する</button>
-    <button class="tab-btn" data-tab="schedule">📅 上司の予定</button>
+    <button class="tab-btn active" data-tab="schedule">📅 予定</button>
+    <button class="tab-btn" data-tab="ask">🤖 質問する</button>
     <button class="tab-btn" data-tab="tech">💡 今日の技術</button>
     <button class="tab-btn" data-tab="chat">💬 チャット</button>
   </nav>
 
   <main>
+    <!-- ② Boss schedule + own schedule + appointment -->
+    <section id="tab-schedule" class="tab-panel active">
+      <div class="card">
+        <div id="status-banner" class="status-banner"></div>
+      </div>
+
+      <div class="card calendar-card">
+        <div class="calendar-header">
+          <button type="button" id="cal-prev" class="ghost-btn small-btn">‹ 前週</button>
+          <h2 id="cal-range-label"></h2>
+          <div class="calendar-header-right">
+            <button type="button" id="cal-today" class="ghost-btn small-btn">今週</button>
+            <button type="button" id="cal-next" class="ghost-btn small-btn">次週 ›</button>
+          </div>
+        </div>
+        <div class="calendar-legend">
+          <span class="legend-item"><span class="legend-dot mine"></span>自分の予定</span>
+          <span class="legend-item"><span class="legend-dot boss"></span>上司の予定</span>
+          <span class="legend-item"><span class="legend-dot pending"></span>申請中</span>
+        </div>
+        <div class="calendar-scroll">
+          <div id="calendar-grid" class="calendar-grid"></div>
+        </div>
+        <p class="empty-msg calendar-hint">空いている時間帯をクリックすると、予定の追加・上司へのアポイント申請ができます。</p>
+      </div>
+    </section>
+
     <!-- ① AI Q&A -->
-    <section id="tab-ask" class="tab-panel active">
+    <section id="tab-ask" class="tab-panel">
       <div class="card">
         <h2>会社のルール・技術について質問する</h2>
         <form id="ask-form">
@@ -46,28 +73,6 @@
           <button type="submit">ナレッジを追加</button>
         </form>
         <ul id="knowledge-list" class="entry-list"></ul>
-      </div>
-    </section>
-
-    <!-- ② Boss schedule + appointment -->
-    <section id="tab-schedule" class="tab-panel">
-      <div class="card">
-        <div id="status-banner" class="status-banner"></div>
-      </div>
-
-      <div class="card calendar-card">
-        <div class="calendar-header">
-          <button type="button" id="cal-prev" class="ghost-btn small-btn">‹ 前週</button>
-          <h2 id="cal-range-label"></h2>
-          <div class="calendar-header-right">
-            <button type="button" id="cal-today" class="ghost-btn small-btn">今週</button>
-            <button type="button" id="cal-next" class="ghost-btn small-btn">次週 ›</button>
-          </div>
-        </div>
-        <div class="calendar-scroll">
-          <div id="calendar-grid" class="calendar-grid"></div>
-        </div>
-        <p class="empty-msg calendar-hint">空いている時間帯をクリックすると予定の確認・アポイント申請ができます。</p>
       </div>
     </section>
 

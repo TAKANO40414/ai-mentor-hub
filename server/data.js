@@ -47,8 +47,8 @@ function seedData() {
       }
     ],
     scheduleEntries: [
-      { id: 's-1', date: today, startTime: '09:00', endTime: '10:30', title: '定例会議', status: 'busy' },
-      { id: 's-2', date: today, startTime: '13:00', endTime: '14:00', title: '来客対応', status: 'busy' }
+      { id: 's-1', ownerId: 'u-boss', date: today, startTime: '09:00', endTime: '10:30', title: '定例会議', status: 'busy' },
+      { id: 's-2', ownerId: 'u-boss', date: today, startTime: '13:00', endTime: '14:00', title: '来客対応', status: 'busy' }
     ],
     appointmentRequests: [],
     announcement: null,

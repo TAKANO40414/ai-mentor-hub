@@ -64,18 +64,26 @@ router.get('/week', requireAuth, (req, res) => {
   const base = req.query.date || todayStr();
   const start = mondayOf(base);
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
-  const isBoss = req.session.user.role === 'boss';
+  const viewerId = req.session.user.id;
+  const boss = db.users.find((u) => u.role === 'boss');
+  const bossId = boss ? boss.id : null;
 
   const entries = db.scheduleEntries
     .filter((e) => days.includes(e.date))
-    .map((e) =>
-      isBoss
-        ? { id: e.id, date: e.date, startTime: e.startTime, endTime: e.endTime, title: e.title, status: e.status }
-        : { date: e.date, startTime: e.startTime, endTime: e.endTime, status: e.status }
-    );
+    .map((e) => {
+      if (e.ownerId === viewerId) {
+        return { id: e.id, date: e.date, startTime: e.startTime, endTime: e.endTime, title: e.title, status: e.status, source: 'mine' };
+      }
+      if (e.ownerId === bossId) {
+        return { date: e.date, startTime: e.startTime, endTime: e.endTime, status: e.status, source: 'boss' };
+      }
+      return null;
+    })
+    .filter(Boolean);
 
+  const isBoss = req.session.user.role === 'boss';
   const appointments = db.appointmentRequests
-    .filter((a) => days.includes(a.date) && a.status === 'pending' && (isBoss || a.fromUserId === req.session.user.id))
+    .filter((a) => days.includes(a.date) && a.status === 'pending' && (isBoss || a.fromUserId === viewerId))
     .map((a) => ({
       id: a.id,
       date: a.date,
@@ -83,7 +91,7 @@ router.get('/week', requireAuth, (req, res) => {
       endTime: a.endTime,
       reason: a.reason,
       fromUserName: a.fromUserName,
-      mine: a.fromUserId === req.session.user.id
+      mine: a.fromUserId === viewerId
     }));
 
   res.json({ start, days, entries, appointments });
@@ -91,38 +99,38 @@ router.get('/week', requireAuth, (req, res) => {
 
 router.get('/today', requireAuth, (req, res) => {
   const db = readDB();
+  const boss = db.users.find((u) => u.role === 'boss');
+  const bossEntries = db.scheduleEntries.filter((e) => e.ownerId === (boss && boss.id));
   const today = todayStr();
-  const freeSlots = computeFreeSlots(db.scheduleEntries, today);
+  const freeSlots = computeFreeSlots(bossEntries, today);
   res.json({
     date: today,
-    canAskNow: currentStatus(db.scheduleEntries),
-    busyBlocks: db.scheduleEntries.filter((e) => e.date === today && e.status === 'busy'),
+    canAskNow: currentStatus(bossEntries),
+    busyBlocks: bossEntries.filter((e) => e.date === today && e.status === 'busy'),
     freeSlots
   });
 });
 
-router.get('/entries', requireBoss, (req, res) => {
-  const db = readDB();
-  res.json({ entries: db.scheduleEntries.sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime)) });
-});
-
-router.post('/entries', requireBoss, (req, res) => {
+router.post('/entries', requireAuth, (req, res) => {
   const { date, startTime, endTime, title } = req.body || {};
   if (!date || !startTime || !endTime || !title) {
     return res.status(400).json({ error: '日付・時間・タイトルは必須です。' });
   }
   const db = readDB();
-  const entry = { id: `s-${crypto.randomUUID()}`, date, startTime, endTime, title, status: 'busy' };
+  const entry = { id: `s-${crypto.randomUUID()}`, ownerId: req.session.user.id, date, startTime, endTime, title, status: 'busy' };
   db.scheduleEntries.push(entry);
   writeDB(db);
   res.status(201).json({ entry });
 });
 
-router.delete('/entries/:id', requireBoss, (req, res) => {
+router.delete('/entries/:id', requireAuth, (req, res) => {
   const db = readDB();
-  const before = db.scheduleEntries.length;
+  const entry = db.scheduleEntries.find((e) => e.id === req.params.id);
+  if (!entry) return res.status(404).json({ error: '見つかりません。' });
+  if (entry.ownerId !== req.session.user.id) {
+    return res.status(403).json({ error: '自分の予定のみ削除できます。' });
+  }
   db.scheduleEntries = db.scheduleEntries.filter((e) => e.id !== req.params.id);
-  if (db.scheduleEntries.length === before) return res.status(404).json({ error: '見つかりません。' });
   writeDB(db);
   res.json({ ok: true });
 });
@@ -171,10 +179,20 @@ router.post('/appointments/:id/decide', requireBoss, (req, res) => {
   if (decision === 'approved') {
     db.scheduleEntries.push({
       id: `s-${crypto.randomUUID()}`,
+      ownerId: req.session.user.id,
       date: request.date,
       startTime: request.startTime,
       endTime: request.endTime,
       title: `${request.fromUserName}との面談`,
+      status: 'busy'
+    });
+    db.scheduleEntries.push({
+      id: `s-${crypto.randomUUID()}`,
+      ownerId: request.fromUserId,
+      date: request.date,
+      startTime: request.startTime,
+      endTime: request.endTime,
+      title: `${req.session.user.name}との面談`,
       status: 'busy'
     });
   }
