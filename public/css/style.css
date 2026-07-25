@@ -338,8 +338,6 @@ button:hover { background: var(--primary-dark); }
   white-space: nowrap;
   cursor: pointer;
 }
-.cal-chip.busy { background: var(--primary); }
-.cal-chip.boss-busy { background: var(--green); }
 .cal-chip.pending { background: var(--pink); }
 .cal-chip.pending.mine { background: var(--pink-dark); }
 
@@ -354,8 +352,6 @@ button:hover { background: var(--primary-dark); }
 }
 .legend-item { display: inline-flex; align-items: center; gap: 0.35rem; }
 .legend-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
-.legend-dot.mine { background: var(--primary); }
-.legend-dot.boss { background: var(--green); }
 .legend-dot.pending { background: var(--pink); }
 
 /* Modal */

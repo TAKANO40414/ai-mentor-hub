@@ -79,23 +79,22 @@ router.get('/month', requireAuth, (req, res) => {
   }
 
   const viewerId = req.session.user.id;
-  const boss = db.users.find((u) => u.role === 'boss');
-  const bossId = boss ? boss.id : null;
+  const isBoss = req.session.user.role === 'boss';
+  const peopleMap = new Map(db.users.map((u) => [u.id, u.name]));
 
   const entries = db.scheduleEntries
     .filter((e) => days.includes(e.date))
-    .map((e) => {
-      if (e.ownerId === viewerId) {
-        return { id: e.id, date: e.date, startTime: e.startTime, endTime: e.endTime, title: e.title, status: e.status, source: 'mine' };
-      }
-      if (e.ownerId === bossId) {
-        return { date: e.date, startTime: e.startTime, endTime: e.endTime, status: e.status, source: 'boss' };
-      }
-      return null;
-    })
-    .filter(Boolean);
+    .map((e) => ({
+      id: e.id,
+      ownerId: e.ownerId,
+      ownerName: peopleMap.get(e.ownerId) || '不明',
+      date: e.date,
+      startTime: e.startTime,
+      endTime: e.endTime,
+      title: e.title,
+      status: e.status
+    }));
 
-  const isBoss = req.session.user.role === 'boss';
   const appointments = db.appointmentRequests
     .filter((a) => days.includes(a.date) && a.status === 'pending' && (isBoss || a.fromUserId === viewerId))
     .map((a) => ({
@@ -108,7 +107,9 @@ router.get('/month', requireAuth, (req, res) => {
       mine: a.fromUserId === viewerId
     }));
 
-  res.json({ month: `${year}-${String(month).padStart(2, '0')}`, days, entries, appointments });
+  const people = db.users.map((u) => ({ id: u.id, name: u.name }));
+
+  res.json({ month: `${year}-${String(month).padStart(2, '0')}`, days, people, entries, appointments });
 });
 
 router.get('/today', requireAuth, (req, res) => {

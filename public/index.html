@@ -40,15 +40,13 @@
           <button type="button" id="cal-prev" class="ghost-btn small-btn">‹ 前月</button>
           <h2 id="cal-range-label"></h2>
           <div class="calendar-header-right">
+            <button type="button" id="cal-filter" class="ghost-btn small-btn">▽ 抽出</button>
+            <button type="button" id="cal-reload" class="ghost-btn small-btn">↻ 再読み込み</button>
             <button type="button" id="cal-today" class="ghost-btn small-btn">今月</button>
             <button type="button" id="cal-next" class="ghost-btn small-btn">次月 ›</button>
           </div>
         </div>
-        <div class="calendar-legend">
-          <span class="legend-item"><span class="legend-dot mine"></span>自分の予定</span>
-          <span class="legend-item"><span class="legend-dot boss"></span>上司の予定</span>
-          <span class="legend-item"><span class="legend-dot pending"></span>申請中</span>
-        </div>
+        <div id="calendar-legend" class="calendar-legend"></div>
         <div class="calendar-scroll">
           <div id="calendar-grid" class="calendar-grid"></div>
         </div>

@@ -98,8 +98,16 @@ async function loadKnowledgeList() {
 const CAL_WEEKDAY_LABELS = ['月', '火', '水', '木', '金', '土', '日'];
 const CAL_DEFAULT_START = '09:00';
 const CAL_DEFAULT_END = '09:30';
+const PERSON_COLORS = ['#e6553f', '#3f9e6d', '#2fa5a0', '#e0a52b', '#8a6b4f', '#e0559c', '#4f8fe0', '#8b5fe0', '#707070', '#2c2c2c'];
 
 let calendarMonthDate = new Date();
+let lastMonthData = null;
+let hiddenPeopleIds = new Set();
+
+function personColor(ownerId, people) {
+  const idx = people.findIndex((p) => p.id === ownerId);
+  return PERSON_COLORS[(idx >= 0 ? idx : 0) % PERSON_COLORS.length];
+}
 
 function isoDate(d) {
   const y = d.getFullYear();
@@ -129,6 +137,11 @@ function initSchedule() {
     calendarMonthDate = new Date();
     loadMonthCalendar();
   });
+  document.getElementById('cal-reload').addEventListener('click', () => {
+    loadMonthCalendar();
+    loadTodaySchedule();
+  });
+  document.getElementById('cal-filter').addEventListener('click', openPeopleFilterModal);
 
   document.getElementById('calendar-grid').addEventListener('click', (e) => {
     const chipEl = e.target.closest('.cal-chip');
@@ -152,8 +165,54 @@ async function loadTodaySchedule() {
 
 async function loadMonthCalendar() {
   const data = await api(`/api/schedule/month?date=${isoDate(calendarMonthDate)}`);
+  lastMonthData = data;
   document.getElementById('cal-range-label').textContent = `${calendarMonthDate.getFullYear()}年${calendarMonthDate.getMonth() + 1}月`;
   renderCalendar(data);
+  renderCalendarLegend(data);
+}
+
+function renderCalendarLegend(data) {
+  const el = document.getElementById('calendar-legend');
+  const peopleHtml = data.people
+    .map(
+      (p, i) =>
+        `<span class="legend-item"><span class="legend-dot" style="background:${PERSON_COLORS[i % PERSON_COLORS.length]}"></span>${escapeHtml(p.name)}</span>`
+    )
+    .join('');
+  el.innerHTML = `${peopleHtml}<span class="legend-item"><span class="legend-dot pending"></span>申請中</span>`;
+}
+
+function openPeopleFilterModal() {
+  if (!lastMonthData) return;
+  openModal(
+    '表示する人を選択',
+    (body) => {
+      body.innerHTML = lastMonthData.people
+        .map(
+          (p, i) => `
+            <label style="flex-direction: row; align-items: center; gap: 0.5rem;">
+              <input type="checkbox" data-person-id="${p.id}" ${hiddenPeopleIds.has(p.id) ? '' : 'checked'} />
+              <span class="legend-dot" style="background:${PERSON_COLORS[i % PERSON_COLORS.length]}"></span>
+              <span>${escapeHtml(p.name)}</span>
+            </label>
+          `
+        )
+        .join('');
+    },
+    (actions) => {
+      actions.appendChild(
+        makeButton('適用', '', () => {
+          const checkboxes = document.querySelectorAll('#modal-body input[type="checkbox"]');
+          hiddenPeopleIds = new Set();
+          checkboxes.forEach((cb) => {
+            if (!cb.checked) hiddenPeopleIds.add(cb.dataset.personId);
+          });
+          closeModal();
+          renderCalendar(lastMonthData);
+        })
+      );
+    }
+  );
 }
 
 function renderCalendar(data) {
@@ -165,7 +224,9 @@ function renderCalendar(data) {
     const isToday = date === today;
     const dayNum = Number(date.slice(8, 10));
     const items = buildDayItems(data, date);
-    const chipHtml = items.map((item) => `<div class="cal-chip ${item.className}" ${item.dataAttrs}>${item.label}</div>`).join('');
+    const chipHtml = items
+      .map((item) => `<div class="cal-chip ${item.className || ''}" style="${item.style || ''}" ${item.dataAttrs}>${item.label}</div>`)
+      .join('');
     parts.push(`
       <div class="cal-month-cell${inMonth ? '' : ' is-outside'}" data-date="${date}">
         <div class="cal-day-number${isToday ? ' is-today' : ''}">${dayNum}</div>
@@ -181,14 +242,12 @@ function buildDayItems(data, date) {
   const items = [];
 
   data.entries
-    .filter((e) => e.date === date)
+    .filter((e) => e.date === date && !hiddenPeopleIds.has(e.ownerId))
     .forEach((e) => {
-      const mine = e.source === 'mine';
-      const label = mine ? escapeHtml(e.title) : '上司: 対応中';
-      const dataAttrs = mine
-        ? `data-kind="entry" data-id="${e.id}" data-date="${e.date}" data-start="${e.startTime}" data-end="${e.endTime}" data-title="${escapeHtml(e.title)}"`
-        : `data-kind="entry" data-date="${e.date}" data-start="${e.startTime}" data-end="${e.endTime}"`;
-      items.push({ start: timeStrToMinutes(e.startTime), className: mine ? 'busy' : 'boss-busy', label, dataAttrs });
+      const color = personColor(e.ownerId, data.people);
+      const label = `${escapeHtml(e.ownerName)}：${escapeHtml(e.title)}`;
+      const dataAttrs = `data-kind="entry" data-id="${e.id}" data-date="${e.date}" data-start="${e.startTime}" data-end="${e.endTime}" data-title="${escapeHtml(e.title)}" data-ownername="${escapeHtml(e.ownerName)}" data-owner="${e.ownerId}"`;
+      items.push({ start: timeStrToMinutes(e.startTime), style: `background:${color}`, label, dataAttrs });
     });
 
   data.appointments
@@ -241,28 +300,25 @@ function makeButton(label, className, onClick) {
 
 function openEventDetail(ds) {
   if (ds.kind === 'entry') {
-    if (ds.id) {
-      openModal(
-        '予定の詳細',
-        (body) => {
-          body.innerHTML = `<p class="modal-meta"><strong>${escapeHtml(ds.title)}</strong><br>${escapeHtml(ds.date)} ${escapeHtml(ds.start)} - ${escapeHtml(ds.end)}</p>`;
-        },
-        (actions) => {
-          actions.appendChild(
-            makeButton('削除', 'danger-btn', async () => {
-              await api(`/api/schedule/entries/${ds.id}`, { method: 'DELETE' });
-              closeModal();
-              loadMonthCalendar();
-              loadTodaySchedule();
-            })
-          );
-        }
-      );
-    } else {
-      openModal('予定の詳細', (body) => {
-        body.innerHTML = `<p class="modal-meta">${escapeHtml(ds.date)} ${escapeHtml(ds.start)} - ${escapeHtml(ds.end)}<br>上司の予定です（詳細は上司のみ確認できます）</p>`;
-      });
-    }
+    const mine = ds.owner === currentUser.id;
+    openModal(
+      '予定の詳細',
+      (body) => {
+        body.innerHTML = `<p class="modal-meta"><strong>${escapeHtml(ds.ownername)}：${escapeHtml(ds.title)}</strong><br>${escapeHtml(ds.date)} ${escapeHtml(ds.start)} - ${escapeHtml(ds.end)}</p>`;
+      },
+      mine
+        ? (actions) => {
+            actions.appendChild(
+              makeButton('削除', 'danger-btn', async () => {
+                await api(`/api/schedule/entries/${ds.id}`, { method: 'DELETE' });
+                closeModal();
+                loadMonthCalendar();
+                loadTodaySchedule();
+              })
+            );
+          }
+        : undefined
+    );
     return;
   }
 
