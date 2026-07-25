@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { readDB } = require('../data');
+const { readDB, writeDB } = require('../data');
 const { verifyPassword } = require('../crypto-util');
 
 function publicUser(u) {
@@ -8,7 +8,7 @@ function publicUser(u) {
 }
 
 router.post('/login', (req, res) => {
-  const { username, password } = req.body || {};
+  const { username, password, announcement } = req.body || {};
   if (!username || !password) {
     return res.status(400).json({ error: 'ユーザー名とパスワードを入力してください。' });
   }
@@ -18,6 +18,16 @@ router.post('/login', (req, res) => {
     return res.status(401).json({ error: 'ユーザー名またはパスワードが正しくありません。' });
   }
   req.session.user = publicUser(user);
+
+  if (user.role === 'boss' && announcement && announcement.trim()) {
+    db.announcement = {
+      text: announcement.trim(),
+      updatedBy: user.name,
+      updatedAt: new Date().toISOString()
+    };
+    writeDB(db);
+  }
+
   res.json({ user: req.session.user });
 });
 
@@ -30,7 +40,7 @@ router.get('/me', (req, res) => {
   const db = readDB();
   const members = db.users.filter((u) => u.role === 'member').map(publicUser);
   const boss = db.users.find((u) => u.role === 'boss');
-  res.json({ user: req.session.user, members, boss: boss ? publicUser(boss) : null });
+  res.json({ user: req.session.user, members, boss: boss ? publicUser(boss) : null, announcement: db.announcement || null });
 });
 
 module.exports = router;

@@ -47,11 +47,13 @@ h3 { font-size: 0.95rem; color: var(--muted); margin-top: 1.2em; }
 .subtitle { text-align: center; color: var(--muted); margin-bottom: 1.6rem; font-size: 0.85rem; }
 .login-card form { display: flex; flex-direction: column; gap: 0.9rem; }
 .login-card label { display: flex; flex-direction: column; font-size: 0.85rem; color: var(--muted); gap: 0.3rem; }
-.login-card input {
+.login-card input, .login-card textarea {
   padding: 0.6rem 0.7rem;
   border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 0.95rem;
+  font-family: inherit;
+  resize: vertical;
 }
 .demo-accounts {
   margin-top: 1.4rem;
@@ -80,6 +82,21 @@ h3 { font-size: 0.95rem; color: var(--muted); margin-top: 1.2em; }
   font-size: 0.75rem;
   padding: 0.25rem 0.6rem;
   border-radius: 999px;
+}
+
+.announcement-banner {
+  background: #fff3cd;
+  color: #7a5b00;
+  padding: 0.7rem 1.4rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  border-bottom: 1px solid #f0dca0;
+}
+.announcement-banner .meta {
+  display: block;
+  font-size: 0.72rem;
+  color: #9c7a1f;
+  margin-top: 0.2rem;
 }
 
 .tabs {

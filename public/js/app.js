@@ -522,13 +522,20 @@ function escapeHtml(str) {
 
 /* ---------- Init ---------- */
 async function init() {
+  let data;
   try {
-    const data = await api('/api/auth/me');
+    data = await api('/api/auth/me');
     currentUser = data.user;
     members = data.members || [];
     bossInfo = data.boss || null;
   } catch (err) {
     return;
+  }
+
+  const banner = document.getElementById('announcement-banner');
+  if (data.announcement && data.announcement.text) {
+    banner.classList.remove('hidden');
+    banner.innerHTML = `📢 ${escapeHtml(data.announcement.text)}<span class="meta">${escapeHtml(data.announcement.updatedBy)} - ${timeLabel(data.announcement.updatedAt)}</span>`;
   }
 
   document.getElementById('user-badge').textContent = `${currentUser.name}（${currentUser.role === 'boss' ? '上司' : '部下'}）`;

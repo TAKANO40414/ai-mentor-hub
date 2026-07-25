@@ -51,6 +51,7 @@ function seedData() {
       { id: 's-2', date: today, startTime: '13:00', endTime: '14:00', title: '来客対応', status: 'busy' }
     ],
     appointmentRequests: [],
+    announcement: null,
     techTips: [
       {
         id: 't-1',
