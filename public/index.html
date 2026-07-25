@@ -22,6 +22,7 @@
     <button class="tab-btn" data-tab="chat">💬 チャット</button>
     <button class="tab-btn" data-tab="manual">📘 マニュアル</button>
     <button class="tab-btn" data-tab="ask">🤖 質問する</button>
+    <button class="tab-btn hidden" data-tab="ai">🧠 AI要約</button>
   </nav>
 
   <main>
@@ -130,6 +131,34 @@
         </form>
       </div>
     </section>
+
+    <!-- ⑤ AI summary (boss only) -->
+    <section id="tab-ai" class="tab-panel">
+      <div class="card">
+        <h2>AI要約（図解付きドキュメント変換）</h2>
+        <p class="empty-msg">文書のテキストまたはPDFをClaude APIに送って、図解付きの要約ドキュメントに変換します。</p>
+
+        <h3>テキストから変換</h3>
+        <form id="ai-text-form" class="grid-form">
+          <textarea id="ai-text-input" placeholder="変換したい文書の内容を貼り付けてください" style="grid-column: 1 / -1;"></textarea>
+          <button type="submit">図解付きドキュメントに変換</button>
+        </form>
+
+        <h3>PDFから変換</h3>
+        <form id="ai-pdf-form" class="grid-form">
+          <input type="file" id="ai-pdf-input" accept="application/pdf" />
+          <button type="submit">PDFを図解付きドキュメントに変換</button>
+        </form>
+
+        <p id="ai-status" class="empty-msg"></p>
+
+        <div id="ai-result-wrap" class="hidden">
+          <h3>変換結果</h3>
+          <div id="ai-result" class="ai-result"></div>
+          <button type="button" id="ai-copy-btn" class="ghost-btn small-btn">結果をコピー</button>
+        </div>
+      </div>
+    </section>
   </main>
 
   <div id="modal-overlay" class="modal-overlay hidden">
@@ -143,6 +172,8 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
@@ -7,6 +9,7 @@ const knowledgeRoutes = require('./routes/knowledge');
 const scheduleRoutes = require('./routes/schedule');
 const manualRoutes = require('./routes/manual');
 const chatRoutes = require('./routes/chat');
+const aiRoutes = require('./routes/ai');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,6 +29,7 @@ app.use('/api/knowledge', knowledgeRoutes);
 app.use('/api/schedule', scheduleRoutes);
 app.use('/api/manual', manualRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/ai', aiRoutes);
 
 app.use(express.static(path.join(__dirname, '..', 'public')));
 

@@ -345,6 +345,19 @@ button:hover { background: var(--primary-dark); }
 .danger-btn { background: var(--pink); }
 .danger-btn:hover { background: var(--pink-dark); }
 
+.ai-result {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.2rem;
+  margin-top: 0.5rem;
+  overflow-x: auto;
+  line-height: 1.6;
+}
+.ai-result h1, .ai-result h2, .ai-result h3 { color: var(--primary-dark); }
+.ai-result pre { background: white; padding: 0.7rem; border-radius: 6px; overflow-x: auto; }
+.ai-result .mermaid { background: white; padding: 0.8rem; border-radius: 8px; margin: 0.9rem 0; text-align: center; }
+
 .manual-section { margin-bottom: 1.2rem; }
 .manual-section:last-child { margin-bottom: 0; }
 .manual-section h3 { margin-top: 0; }

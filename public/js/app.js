@@ -542,6 +542,69 @@ async function loadThread() {
   el.scrollTop = el.scrollHeight;
 }
 
+/* ---------- ⑤ AI summary (boss only) ---------- */
+function initAiSummary() {
+  const tabBtn = document.querySelector('.tab-btn[data-tab="ai"]');
+  if (currentUser.role !== 'boss') {
+    tabBtn.classList.add('hidden');
+    return;
+  }
+  tabBtn.classList.remove('hidden');
+
+  if (window.mermaid) mermaid.initialize({ startOnLoad: false });
+
+  document.getElementById('ai-text-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = document.getElementById('ai-text-input').value.trim();
+    if (!text) return;
+    await runAiConversion(() => api('/api/ai/summarize-text', { method: 'POST', body: JSON.stringify({ text }) }));
+  });
+
+  document.getElementById('ai-pdf-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fileInput = document.getElementById('ai-pdf-input');
+    if (!fileInput.files[0]) return;
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    await runAiConversion(() => api('/api/ai/summarize-pdf', { method: 'POST', body: formData }));
+  });
+
+  document.getElementById('ai-copy-btn').addEventListener('click', () => {
+    const raw = document.getElementById('ai-result').dataset.raw || '';
+    navigator.clipboard.writeText(raw);
+  });
+}
+
+async function runAiConversion(request) {
+  const statusEl = document.getElementById('ai-status');
+  const resultWrap = document.getElementById('ai-result-wrap');
+  statusEl.textContent = '変換中です…（Claude APIを呼び出しています）';
+  resultWrap.classList.add('hidden');
+  try {
+    const { markdown } = await request();
+    statusEl.textContent = '';
+    const resultEl = document.getElementById('ai-result');
+    renderMarkdownWithMermaid(markdown, resultEl);
+    resultEl.dataset.raw = markdown;
+    resultWrap.classList.remove('hidden');
+  } catch (err) {
+    statusEl.textContent = err.message;
+  }
+}
+
+function renderMarkdownWithMermaid(markdown, containerEl) {
+  containerEl.innerHTML = window.marked ? window.marked.parse(markdown) : escapeHtml(markdown);
+  containerEl.querySelectorAll('pre code.language-mermaid').forEach((codeEl) => {
+    const div = document.createElement('div');
+    div.className = 'mermaid';
+    div.textContent = codeEl.textContent;
+    codeEl.parentElement.replaceWith(div);
+  });
+  if (window.mermaid) {
+    window.mermaid.run({ nodes: containerEl.querySelectorAll('.mermaid') }).catch(() => {});
+  }
+}
+
 /* ---------- Utils ---------- */
 function escapeHtml(str) {
   return String(str || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -577,6 +640,7 @@ async function init() {
   initSchedule();
   initManual();
   initChat();
+  initAiSummary();
 }
 
 init();
