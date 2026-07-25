@@ -80,12 +80,16 @@ h3 { font-size: 1.1rem; color: var(--primary); margin-top: 1.2em; }
   z-index: 300;
   padding: 1.2rem;
 }
+.announce-frame {
+  position: relative;
+  width: min(380px, 100%);
+}
 .announce-card {
   position: relative;
   background: #f3d94a;
   border: 3px solid #8f2142;
   border-radius: 22px;
-  width: min(380px, 100%);
+  width: 100%;
   padding: 2.6rem 1.8rem 1.6rem;
   box-shadow: 10px 10px 0 rgba(143, 33, 66, 0.18);
   overflow: hidden;
@@ -116,7 +120,7 @@ h3 { font-size: 1.1rem; color: var(--primary); margin-top: 1.2em; }
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2;
+  z-index: 5;
 }
 .announce-badge {
   position: relative;
