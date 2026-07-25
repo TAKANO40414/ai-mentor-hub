@@ -67,6 +67,75 @@ h3 { font-size: 1.1rem; color: var(--primary); margin-top: 1.2em; }
 .demo-accounts ul { padding-left: 1.1rem; margin: 0.4rem 0 0; }
 .error-text { color: var(--pink); font-weight: bold; font-size: 0.95rem; min-height: 1.2em; }
 
+/* Announcement popup (login page) */
+.announce-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 10, 15, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  padding: 1.2rem;
+}
+.announce-card {
+  position: relative;
+  background: #f3d94a;
+  border: 3px solid #8f2142;
+  border-radius: 22px;
+  width: min(380px, 100%);
+  padding: 2.6rem 1.8rem 1.6rem;
+  box-shadow: 10px 10px 0 rgba(143, 33, 66, 0.18);
+  overflow: hidden;
+}
+.announce-card::after {
+  content: '';
+  position: absolute;
+  right: -60px;
+  bottom: -60px;
+  width: 160px;
+  height: 160px;
+  border: 2px solid rgba(143, 33, 66, 0.25);
+  border-radius: 50%;
+}
+.announce-close {
+  position: absolute;
+  top: -16px;
+  right: -16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid #1a1a1a;
+  color: #1a1a1a;
+  font-size: 1.05rem;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+.announce-badge {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  border: 1.5px solid #8f2142;
+  color: #8f2142;
+  background: rgba(255, 255, 255, 0.35);
+  font-weight: bold;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  padding: 0.28rem 0.9rem;
+  border-radius: 999px;
+  margin-bottom: 1rem;
+}
+.announce-title { position: relative; z-index: 1; font-size: 1.9rem; font-weight: bold; color: #1a1a1a; margin: 0 0 0.5rem; }
+.announce-date { position: relative; z-index: 1; color: #8f2142; font-weight: bold; font-size: 0.95rem; margin: 0 0 1.3rem; }
+.announce-body { position: relative; z-index: 1; color: #1a1a1a; font-size: 1rem; line-height: 1.7; margin: 0 0 2.4rem; white-space: pre-wrap; }
+.announce-divider { position: relative; z-index: 1; border-top: 1px solid rgba(143, 33, 66, 0.4); margin-bottom: 0.8rem; }
+.announce-footer { position: relative; z-index: 1; color: #8f2142; font-weight: bold; font-size: 0.72rem; letter-spacing: 0.08em; margin: 0; }
+
 /* App shell */
 .app-header {
   display: flex;
@@ -103,6 +172,8 @@ h3 { font-size: 1.1rem; color: var(--primary); margin-top: 1.2em; }
   color: var(--pink-dark);
   margin-top: 0.2rem;
 }
+
+.announcement-admin { padding: 0.6rem 1.4rem 0; }
 
 .tabs {
   display: flex;

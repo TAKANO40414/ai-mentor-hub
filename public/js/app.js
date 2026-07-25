@@ -660,6 +660,43 @@ function escapeHtml(str) {
   return String(str || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+/* ---------- Announcement (dashboard banner + boss editor) ---------- */
+function renderAnnouncementBanner(announcement) {
+  const banner = document.getElementById('announcement-banner');
+  if (announcement && announcement.text) {
+    banner.classList.remove('hidden');
+    banner.innerHTML = `📢 ${escapeHtml(announcement.text)}<span class="meta">${escapeHtml(announcement.updatedBy)} - ${timeLabel(announcement.updatedAt)}</span>`;
+  } else {
+    banner.classList.add('hidden');
+    banner.innerHTML = '';
+  }
+}
+
+function initAnnouncementAdmin(currentAnnouncement) {
+  if (currentUser.role !== 'boss') return;
+  document.getElementById('announcement-admin').classList.remove('hidden');
+  document.getElementById('announcement-edit-btn').addEventListener('click', () => {
+    openModal(
+      '全体のお知らせを編集',
+      (body) => {
+        body.innerHTML = `<label>お知らせ内容（空にすると非表示になります）<textarea id="announcement-edit-input" rows="4"></textarea></label>`;
+        document.getElementById('announcement-edit-input').value = currentAnnouncement ? currentAnnouncement.text : '';
+      },
+      (actions) => {
+        actions.appendChild(
+          makeButton('保存', '', async () => {
+            const text = document.getElementById('announcement-edit-input').value;
+            const { announcement } = await api('/api/announcement', { method: 'POST', body: JSON.stringify({ text }) });
+            currentAnnouncement = announcement;
+            renderAnnouncementBanner(announcement);
+            closeModal();
+          })
+        );
+      }
+    );
+  });
+}
+
 /* ---------- Init ---------- */
 async function init() {
   let data;
@@ -672,11 +709,7 @@ async function init() {
     return;
   }
 
-  const banner = document.getElementById('announcement-banner');
-  if (data.announcement && data.announcement.text) {
-    banner.classList.remove('hidden');
-    banner.innerHTML = `📢 ${escapeHtml(data.announcement.text)}<span class="meta">${escapeHtml(data.announcement.updatedBy)} - ${timeLabel(data.announcement.updatedAt)}</span>`;
-  }
+  renderAnnouncementBanner(data.announcement);
 
   document.getElementById('user-badge').textContent = `${currentUser.name}（${currentUser.role === 'boss' ? '上司' : '部下'}）`;
   document.getElementById('logout-btn').addEventListener('click', async () => {
@@ -686,6 +719,7 @@ async function init() {
 
   initTabs();
   initModal();
+  initAnnouncementAdmin(data.announcement);
   initAsk();
   initSchedule();
   initManual();

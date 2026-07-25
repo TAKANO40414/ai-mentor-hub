@@ -17,9 +17,6 @@
       <label>パスワード
         <input type="password" id="password" autocomplete="current-password" required />
       </label>
-      <label>お知らせ（任意・上司でログインした場合のみ全員に表示されます）
-        <textarea id="announcement" rows="2"></textarea>
-      </label>
       <button type="submit">ログイン</button>
       <p id="login-error" class="error-text"></p>
     </form>
@@ -32,6 +29,19 @@
       </ul>
     </div>
   </div>
+
+  <div id="announce-modal" class="announce-modal hidden">
+    <div class="announce-card">
+      <button type="button" id="announce-close" class="announce-close" aria-label="閉じる">✕</button>
+      <span class="announce-badge">INFORMATION</span>
+      <h2 class="announce-title">お知らせ</h2>
+      <p class="announce-date" id="announce-date"></p>
+      <p class="announce-body" id="announce-body"></p>
+      <div class="announce-divider"></div>
+      <p class="announce-footer">PLEASE CHECK THE LATEST UPDATE</p>
+    </div>
+  </div>
+
   <script src="js/login.js"></script>
 </body>
 </html>

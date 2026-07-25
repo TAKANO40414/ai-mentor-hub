@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { readDB, writeDB } = require('../data');
+const { readDB } = require('../data');
 const { verifyPassword } = require('../crypto-util');
 
 function publicUser(u) {
@@ -8,7 +8,7 @@ function publicUser(u) {
 }
 
 router.post('/login', (req, res) => {
-  const { username, password, announcement } = req.body || {};
+  const { username, password } = req.body || {};
   if (!username || !password) {
     return res.status(400).json({ error: 'ユーザー名とパスワードを入力してください。' });
   }
@@ -18,16 +18,6 @@ router.post('/login', (req, res) => {
     return res.status(401).json({ error: 'ユーザー名またはパスワードが正しくありません。' });
   }
   req.session.user = publicUser(user);
-
-  if (user.role === 'boss' && announcement && announcement.trim()) {
-    db.announcement = {
-      text: announcement.trim(),
-      updatedBy: user.name,
-      updatedAt: new Date().toISOString()
-    };
-    writeDB(db);
-  }
-
   res.json({ user: req.session.user });
 });
 
