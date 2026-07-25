@@ -85,6 +85,8 @@
 
       <div id="manual-admin" class="card hidden">
         <h2>マニュアル管理（上司のみ）</h2>
+
+        <h3>テキストで入力</h3>
         <form id="manual-form" class="grid-form">
           <select id="mn-category">
             <option value="ルール">ルール</option>
@@ -95,6 +97,19 @@
           <textarea id="mn-description" placeholder="内容"></textarea>
           <button type="submit">追加</button>
         </form>
+
+        <h3>PDFを追加</h3>
+        <form id="manual-upload-form" class="grid-form">
+          <select id="mn-pdf-category">
+            <option value="ルール">ルール</option>
+            <option value="技術要点">技術要点</option>
+            <option value="お知らせ">お知らせ</option>
+          </select>
+          <input type="text" id="mn-pdf-title" placeholder="タイトル（未入力の場合はファイル名を使用）" />
+          <input type="file" id="mn-pdf-file" accept="application/pdf" required />
+          <button type="submit">PDFを追加</button>
+        </form>
+
         <ul id="manual-admin-list" class="entry-list"></ul>
       </div>
     </section>

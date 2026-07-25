@@ -2,5 +2,6 @@ node_modules/
 .DS_Store
 *.log
 data/db.json
+data/uploads/
 qr-code.png
 github-repo-qr.png

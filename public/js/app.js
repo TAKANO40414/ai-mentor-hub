@@ -4,9 +4,10 @@ let bossInfo = null;
 let activePartnerId = null;
 
 async function api(path, options = {}) {
+  const isFormData = options.body instanceof FormData;
   const res = await fetch(path, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options
+    ...options,
+    headers: isFormData ? options.headers : { 'Content-Type': 'application/json', ...(options.headers || {}) }
   });
   if (res.status === 401) {
     window.location.href = '/login.html';
@@ -421,6 +422,23 @@ function initManual() {
       loadManualList();
       loadManualAdminList();
     });
+    document.getElementById('manual-upload-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fileInput = document.getElementById('mn-pdf-file');
+      if (!fileInput.files[0]) return;
+      const formData = new FormData();
+      formData.append('category', document.getElementById('mn-pdf-category').value);
+      formData.append('title', document.getElementById('mn-pdf-title').value.trim());
+      formData.append('file', fileInput.files[0]);
+      try {
+        await api('/api/manual/upload', { method: 'POST', body: formData });
+        e.target.reset();
+        loadManualList();
+        loadManualAdminList();
+      } catch (err) {
+        alert(err.message);
+      }
+    });
     loadManualAdminList();
   }
 }
@@ -445,7 +463,7 @@ async function loadManualList() {
       items.forEach((item) => {
         const div = document.createElement('div');
         div.className = 'manual-item';
-        div.innerHTML = `<div class="manual-item-title">${escapeHtml(item.title)}</div>${item.description ? `<div class="manual-item-desc">${escapeHtml(item.description)}</div>` : ''}`;
+        div.innerHTML = `<div class="manual-item-title">${escapeHtml(item.title)}</div>${item.description ? `<div class="manual-item-desc">${escapeHtml(item.description)}</div>` : ''}${item.hasFile ? `<a class="manual-item-pdf" href="/api/manual/${item.id}/file" target="_blank" rel="noopener">📄 PDFを開く</a>` : ''}`;
         section.appendChild(div);
       });
     }
@@ -463,7 +481,8 @@ async function loadManualAdminList() {
   }
   entries.forEach((e) => {
     const li = document.createElement('li');
-    li.innerHTML = `<div><strong>[${escapeHtml(e.category)}] ${escapeHtml(e.title)}</strong><div class="meta">${escapeHtml(e.description || '')}</div></div>`;
+    const metaText = e.hasFile ? `📄 ${escapeHtml(e.fileName || 'PDF')}` : escapeHtml(e.description || '');
+    li.innerHTML = `<div><strong>[${escapeHtml(e.category)}] ${escapeHtml(e.title)}</strong><div class="meta">${metaText}</div></div>`;
     const del = document.createElement('button');
     del.textContent = '削除';
     del.className = 'small-btn danger-btn';
