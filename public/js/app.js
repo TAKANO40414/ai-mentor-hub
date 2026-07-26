@@ -906,7 +906,19 @@ async function loadAiChatModels() {
   try {
     const { models, default: defaultModel } = await api('/api/ai/chat-models');
     const select = document.getElementById('ai-chat-model');
-    select.innerHTML = models.map((m) => `<option value="${m.id}">${escapeHtml(m.label)}</option>`).join('');
+    const groupLabels = { anthropic: 'Claude', ollama: 'ローカルOllama' };
+    const groups = {};
+    models.forEach((m) => {
+      const key = m.provider || 'anthropic';
+      groups[key] = groups[key] || [];
+      groups[key].push(m);
+    });
+    select.innerHTML = Object.entries(groups)
+      .map(([key, list]) => {
+        const options = list.map((m) => `<option value="${m.id}">${escapeHtml(m.label)}</option>`).join('');
+        return `<optgroup label="${escapeHtml(groupLabels[key] || key)}">${options}</optgroup>`;
+      })
+      .join('');
     aiChatModel = defaultModel;
     select.value = defaultModel;
     select.addEventListener('change', () => {

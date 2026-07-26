@@ -18,13 +18,62 @@ const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
 const MAX_TEXT_LENGTH = 150000;
 
+const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+const OLLAMA_PREFIX = 'ollama:';
+
 const CHAT_MODELS = [
-  { id: 'claude-sonnet-5', label: 'Claude Sonnet 5（バランス型・おすすめ）' },
-  { id: 'claude-opus-5', label: 'Claude Opus 5（高性能・じっくり回答）' },
-  { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5（高速・軽量）' },
-  { id: 'claude-fable-5', label: 'Claude Fable 5' }
+  { id: 'claude-sonnet-5', label: 'Claude Sonnet 5（バランス型・おすすめ）', provider: 'anthropic' },
+  { id: 'claude-opus-5', label: 'Claude Opus 5（高性能・じっくり回答）', provider: 'anthropic' },
+  { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5（高速・軽量）', provider: 'anthropic' },
+  { id: 'claude-fable-5', label: 'Claude Fable 5', provider: 'anthropic' }
 ];
 const CHAT_MODEL_IDS = CHAT_MODELS.map((m) => m.id);
+
+async function listOllamaModels() {
+  try {
+    const res = await fetch(`${OLLAMA_BASE_URL}/api/tags`);
+    if (!res.ok) return [];
+    const data = await res.json().catch(() => ({}));
+    return (data.models || []).map((m) => ({
+      id: `${OLLAMA_PREFIX}${m.name}`,
+      label: `${m.name}（ローカルOllama）`,
+      provider: 'ollama'
+    }));
+  } catch {
+    return [];
+  }
+}
+
+async function callOllama(messages, systemPrompt, model, maxTokens = 1024) {
+  let res;
+  try {
+    res = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        stream: false,
+        messages: [{ role: 'system', content: systemPrompt }, ...messages],
+        options: { num_predict: maxTokens }
+      })
+    });
+  } catch {
+    const err = new Error(
+      `Ollamaサーバーに接続できません（${OLLAMA_BASE_URL}）。ローカルでOllamaが起動しているか確認してください。`
+    );
+    err.status = 502;
+    throw err;
+  }
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error || 'Ollamaの呼び出しに失敗しました。');
+    err.status = res.status >= 400 && res.status < 600 ? res.status : 502;
+    throw err;
+  }
+
+  return data.message?.content || '';
+}
 
 const SUMMARIZE_SYSTEM_PROMPT = `あなたは社内文書を分かりやすく要約するアシスタントです。
 入力された文書の内容を、日本語で以下の形式のMarkdownとして出力してください。
@@ -122,8 +171,9 @@ router.post('/summarize-pdf', requireBoss, (req, res) => {
   });
 });
 
-router.get('/chat-models', requireAuth, (req, res) => {
-  res.json({ models: CHAT_MODELS, default: MODEL });
+router.get('/chat-models', requireAuth, async (req, res) => {
+  const ollamaModels = await listOllamaModels();
+  res.json({ models: [...CHAT_MODELS, ...ollamaModels], default: MODEL });
 });
 
 router.post('/chat', requireAuth, async (req, res) => {
@@ -141,9 +191,14 @@ router.post('/chat', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'メッセージを入力してください。' });
   }
 
-  const selectedModel = CHAT_MODEL_IDS.includes(model) ? model : MODEL;
-
   try {
+    if (typeof model === 'string' && model.startsWith(OLLAMA_PREFIX)) {
+      const ollamaModel = model.slice(OLLAMA_PREFIX.length);
+      const reply = await callOllama(sanitized, CHAT_SYSTEM_PROMPT, ollamaModel, 1024);
+      return res.json({ reply, model });
+    }
+
+    const selectedModel = CHAT_MODEL_IDS.includes(model) ? model : MODEL;
     const reply = await callClaude(sanitized, CHAT_SYSTEM_PROMPT, 1024, selectedModel);
     res.json({ reply, model: selectedModel });
   } catch (err) {
