@@ -229,11 +229,60 @@
   </main>
 
   <nav class="tabs">
-    <button class="tab-btn active" data-tab="schedule">📅 予定</button>
-    <button class="tab-btn" data-tab="chat">💬 チャット</button>
-    <button class="tab-btn" data-tab="manual">📘 マニュアル</button>
-    <button class="tab-btn" data-tab="ask">🤖 質問する</button>
-    <button class="tab-btn" data-tab="ai-hub">✨ AI</button>
+    <button class="tab-btn active" data-tab="schedule">
+      <svg class="tab-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="6" y="7" width="3" height="6" rx="1.5" fill="#e8583f"/>
+        <rect x="31" y="7" width="3" height="6" rx="1.5" fill="#e8583f"/>
+        <rect x="4" y="9" width="32" height="27" rx="5" fill="#fff" stroke="#e2e5ea" stroke-width="1.5"/>
+        <path d="M4 14a5 5 0 0 1 5-5h22a5 5 0 0 1 5 5v3H4v-3Z" fill="#f5822a"/>
+        <g fill="#e8583f"><rect x="9" y="21" width="4" height="4" rx="1"/><rect x="18" y="21" width="4" height="4" rx="1"/></g>
+        <g fill="#2fb6a3"><rect x="27" y="21" width="4" height="4" rx="1"/><rect x="9" y="28" width="4" height="4" rx="1"/></g>
+        <g fill="#4a90e2"><rect x="18" y="28" width="4" height="4" rx="1"/></g>
+        <rect x="27" y="28" width="4" height="4" rx="1" fill="#f2b134"/>
+      </svg>
+      <span class="tab-label">予定</span>
+    </button>
+    <button class="tab-btn" data-tab="chat">
+      <svg class="tab-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M6 12a7 7 0 0 1 7-7h9a7 7 0 0 1 0 14h-9.5L8 23V19a7 7 0 0 1-2-7Z" fill="#5fd0c2"/>
+        <path d="M34 24a6 6 0 0 0-6-6H17a6 6 0 0 0 0 12h9l5 4v-4a6 6 0 0 0 3-6Z" fill="#f19a9a"/>
+        <circle cx="20" cy="24" r="1.6" fill="#fff"/>
+        <circle cx="25.5" cy="24" r="1.6" fill="#fff"/>
+        <circle cx="31" cy="24" r="1.6" fill="#fff"/>
+      </svg>
+      <span class="tab-label">チャット</span>
+    </button>
+    <button class="tab-btn" data-tab="manual">
+      <svg class="tab-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="9" y="6" width="22" height="29" rx="3" transform="rotate(3 20 20)" fill="#e8583f"/>
+        <rect x="12" y="10" width="16" height="21" rx="2" fill="#fdf3ea"/>
+        <rect x="15" y="14" width="10" height="2" rx="1" fill="#c9c2b4"/>
+        <rect x="15" y="18" width="10" height="2" rx="1" fill="#c9c2b4"/>
+        <path d="M16 6h4v6l-2-1.6L16 12V6Z" fill="#1f3352"/>
+      </svg>
+      <span class="tab-label">マニュアル</span>
+    </button>
+    <button class="tab-btn" data-tab="ask">
+      <svg class="tab-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M6 13a7 7 0 0 1 7-7h14a7 7 0 0 1 7 7v9a7 7 0 0 1-7 7H16l-6 4v-4a7 7 0 0 1-4-6v-10Z" fill="#4a90e2"/>
+        <text x="20" y="24" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff" font-family="sans-serif">?</text>
+      </svg>
+      <span class="tab-label">質問する</span>
+    </button>
+    <button class="tab-btn" data-tab="ai-hub">
+      <svg class="tab-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <line x1="14" y1="9" x2="14" y2="13" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round"/>
+        <line x1="26" y1="9" x2="26" y2="13" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="14" cy="7" r="2" fill="#1a1a1a"/>
+        <circle cx="26" cy="7" r="2" fill="#1a1a1a"/>
+        <circle cx="8" cy="21" r="3" fill="none" stroke="#1a1a1a" stroke-width="2"/>
+        <circle cx="32" cy="21" r="3" fill="none" stroke="#1a1a1a" stroke-width="2"/>
+        <rect x="10" y="12" width="20" height="18" rx="6" fill="none" stroke="#1a1a1a" stroke-width="2.2"/>
+        <ellipse cx="16" cy="21" rx="2" ry="2.6" fill="#1a1a1a"/>
+        <ellipse cx="24" cy="21" rx="2" ry="2.6" fill="#1a1a1a"/>
+      </svg>
+      <span class="tab-label">ai</span>
+    </button>
   </nav>
 
   <div id="modal-overlay" class="modal-overlay hidden">
