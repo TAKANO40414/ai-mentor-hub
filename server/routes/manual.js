@@ -33,7 +33,9 @@ function publicEntry(e) {
     title: e.title,
     description: e.description || '',
     hasFile: Boolean(e.storedFileName),
-    fileName: e.fileName || null
+    fileName: e.fileName || null,
+    createdAt: e.createdAt || null,
+    createdBy: e.createdBy || null
   };
 }
 
@@ -55,7 +57,9 @@ router.post('/', requireBoss, (req, res) => {
     id: `mn-${crypto.randomUUID()}`,
     category,
     title: title.trim(),
-    description: (description || '').trim()
+    description: (description || '').trim(),
+    createdAt: new Date().toISOString(),
+    createdBy: req.session.user.name
   };
   db.manualEntries.push(entry);
   writeDB(db);
@@ -81,7 +85,9 @@ router.post('/upload', requireBoss, (req, res) => {
       title,
       description: '',
       fileName: req.file.originalname,
-      storedFileName: req.file.filename
+      storedFileName: req.file.filename,
+      createdAt: new Date().toISOString(),
+      createdBy: req.session.user.name
     };
     db.manualEntries.push(entry);
     writeDB(db);

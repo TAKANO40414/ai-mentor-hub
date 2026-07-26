@@ -104,39 +104,68 @@
 
     <!-- ③ Manual (rules / technical key points / announcements) -->
     <section id="tab-manual" class="tab-panel">
-      <div class="card">
-        <h2>マニュアル</h2>
-        <div id="manual-list"></div>
-      </div>
+      <div class="manual-shell">
+        <aside class="manual-sidebar">
+          <div class="manual-sidebar-head">
+            <h2>マニュアル</h2>
+            <p class="manual-sidebar-sub">一覧</p>
+          </div>
+          <nav id="manual-channel-list" class="manual-channel-list"></nav>
+          <button type="button" id="manual-create-btn" class="manual-create-link hidden">＋ 作成</button>
+        </aside>
 
-      <div id="manual-admin" class="card hidden">
-        <h2>マニュアル管理（上司のみ）</h2>
+        <div class="manual-main">
+          <div class="manual-main-header">
+            <div>
+              <h2 id="manual-active-title"></h2>
+              <p id="manual-active-count" class="manual-main-sub"></p>
+            </div>
+            <button type="button" id="manual-search-toggle" class="manual-search-icon-btn" aria-label="検索">🔍</button>
+          </div>
 
-        <h3>テキストで入力</h3>
-        <form id="manual-form" class="grid-form">
-          <select id="mn-category">
-            <option value="ルール">ルール</option>
-            <option value="技術要点">技術要点</option>
-            <option value="お知らせ">お知らせ</option>
-          </select>
-          <input type="text" id="mn-title" placeholder="タイトル（例：有給休暇の申請ルール）" required />
-          <textarea id="mn-description" placeholder="内容"></textarea>
-          <button type="submit">追加</button>
-        </form>
+          <div id="manual-search-card" class="card manual-search-card hidden">
+            <h3>内容を検索</h3>
+            <p class="empty-msg">キーワードでマニュアルの内容を検索できます。</p>
+            <form id="manual-search-form" class="manual-search-bar">
+              <input type="text" id="manual-search-input" placeholder="キーワードを入力" autocomplete="off" />
+              <button type="submit">検索</button>
+            </form>
+          </div>
 
-        <h3>PDFを追加</h3>
-        <form id="manual-upload-form" class="grid-form">
-          <select id="mn-pdf-category">
-            <option value="ルール">ルール</option>
-            <option value="技術要点">技術要点</option>
-            <option value="お知らせ">お知らせ</option>
-          </select>
-          <input type="text" id="mn-pdf-title" placeholder="タイトル（未入力の場合はファイル名を使用）" />
-          <input type="file" id="mn-pdf-file" accept="application/pdf" required />
-          <button type="submit">PDFを追加</button>
-        </form>
+          <div class="manual-filter-tabs">
+            <button type="button" class="manual-filter-btn active" data-filter="all">すべて</button>
+            <button type="button" class="manual-filter-btn" data-filter="text">テキスト</button>
+            <button type="button" class="manual-filter-btn" data-filter="pdf">PDF</button>
+          </div>
 
-        <ul id="manual-admin-list" class="entry-list"></ul>
+          <div id="manual-list" class="manual-result-list"></div>
+
+          <div id="manual-admin" class="card hidden">
+            <h3>テキストで入力</h3>
+            <form id="manual-form" class="grid-form">
+              <select id="mn-category">
+                <option value="ルール">ルール</option>
+                <option value="技術要点">技術要点</option>
+                <option value="お知らせ">お知らせ</option>
+              </select>
+              <input type="text" id="mn-title" placeholder="タイトル（例：有給休暇の申請ルール）" required />
+              <textarea id="mn-description" placeholder="内容"></textarea>
+              <button type="submit">追加</button>
+            </form>
+
+            <h3>PDFを追加</h3>
+            <form id="manual-upload-form" class="grid-form">
+              <select id="mn-pdf-category">
+                <option value="ルール">ルール</option>
+                <option value="技術要点">技術要点</option>
+                <option value="お知らせ">お知らせ</option>
+              </select>
+              <input type="text" id="mn-pdf-title" placeholder="タイトル（未入力の場合はファイル名を使用）" />
+              <input type="file" id="mn-pdf-file" accept="application/pdf" required />
+              <button type="submit">PDFを追加</button>
+            </form>
+          </div>
+        </div>
       </div>
     </section>
 

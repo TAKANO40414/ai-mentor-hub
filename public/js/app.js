@@ -626,11 +626,36 @@ function renderSlotExtraField(mode) {
 
 /* ---------- ③ Manual (rules / technical key points / announcements) ---------- */
 const MANUAL_CATEGORIES = ['ルール', '技術要点', 'お知らせ'];
+let manualEntries = [];
+let manualActiveCategory = MANUAL_CATEGORIES[0];
+let manualKeyword = '';
+let manualFilter = 'all';
 
 function initManual() {
-  loadManualList();
+  renderManualChannelList();
+  document.getElementById('manual-search-toggle').addEventListener('click', () => {
+    document.getElementById('manual-search-card').classList.toggle('hidden');
+  });
+  document.getElementById('manual-search-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    manualKeyword = document.getElementById('manual-search-input').value.trim();
+    renderManualList();
+  });
+  document.querySelectorAll('.manual-filter-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.manual-filter-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      manualFilter = btn.dataset.filter;
+      renderManualList();
+    });
+  });
+
   if (currentUser.role === 'boss') {
-    document.getElementById('manual-admin').classList.remove('hidden');
+    const createBtn = document.getElementById('manual-create-btn');
+    createBtn.classList.remove('hidden');
+    createBtn.addEventListener('click', () => {
+      document.getElementById('manual-admin').classList.toggle('hidden');
+    });
     document.getElementById('manual-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const category = document.getElementById('mn-category').value;
@@ -638,80 +663,108 @@ function initManual() {
       const description = document.getElementById('mn-description').value.trim();
       await api('/api/manual', { method: 'POST', body: JSON.stringify({ category, title, description }) });
       e.target.reset();
+      manualActiveCategory = category;
       loadManualList();
-      loadManualAdminList();
     });
     document.getElementById('manual-upload-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const fileInput = document.getElementById('mn-pdf-file');
       if (!fileInput.files[0]) return;
+      const category = document.getElementById('mn-pdf-category').value;
       const formData = new FormData();
-      formData.append('category', document.getElementById('mn-pdf-category').value);
+      formData.append('category', category);
       formData.append('title', document.getElementById('mn-pdf-title').value.trim());
       formData.append('file', fileInput.files[0]);
       try {
         await api('/api/manual/upload', { method: 'POST', body: formData });
         e.target.reset();
+        manualActiveCategory = category;
         loadManualList();
-        loadManualAdminList();
       } catch (err) {
         alert(err.message);
       }
     });
-    loadManualAdminList();
   }
+
+  loadManualList();
+}
+
+function renderManualChannelList() {
+  const nav = document.getElementById('manual-channel-list');
+  nav.innerHTML = MANUAL_CATEGORIES.map(
+    (category) =>
+      `<button type="button" class="manual-channel-btn${category === manualActiveCategory ? ' active' : ''}" data-category="${escapeHtml(category)}"># ${escapeHtml(category)}</button>`
+  ).join('');
+  nav.querySelectorAll('.manual-channel-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      manualActiveCategory = btn.dataset.category;
+      renderManualChannelList();
+      renderManualList();
+    });
+  });
+}
+
+function formatManualDate(iso) {
+  if (!iso) return '';
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (days <= 0) return '今日';
+  if (days < 30) return `${days}日`;
+  if (days < 365) return `${Math.floor(days / 30)}か月`;
+  return `${Math.floor(days / 365)}年`;
 }
 
 async function loadManualList() {
   const { entries } = await api('/api/manual');
-  const container = document.getElementById('manual-list');
-  container.innerHTML = '';
-  MANUAL_CATEGORIES.forEach((category) => {
-    const items = entries.filter((e) => e.category === category);
-    const section = document.createElement('div');
-    section.className = 'manual-section';
-    const heading = document.createElement('h3');
-    heading.textContent = category;
-    section.appendChild(heading);
-    if (!items.length) {
-      const empty = document.createElement('p');
-      empty.className = 'empty-msg';
-      empty.textContent = '登録されている内容はありません。';
-      section.appendChild(empty);
-    } else {
-      items.forEach((item) => {
-        const div = document.createElement('div');
-        div.className = 'manual-item';
-        div.innerHTML = `<div class="manual-item-title">${escapeHtml(item.title)}</div>${item.description ? `<div class="manual-item-desc">${escapeHtml(item.description)}</div>` : ''}${item.hasFile ? `<a class="manual-item-pdf" href="/api/manual/${item.id}/file" target="_blank" rel="noopener">📄 PDFを開く</a>` : ''}`;
-        section.appendChild(div);
-      });
-    }
-    container.appendChild(section);
-  });
+  manualEntries = entries;
+  renderManualList();
 }
 
-async function loadManualAdminList() {
-  const { entries } = await api('/api/manual');
-  const list = document.getElementById('manual-admin-list');
-  list.innerHTML = '';
-  if (!entries.length) {
-    list.innerHTML = '<li class="empty-msg">登録された内容はありません。</li>';
+function renderManualList() {
+  const categoryItems = manualEntries.filter((e) => e.category === manualActiveCategory);
+  document.getElementById('manual-active-title').textContent = `# ${manualActiveCategory}`;
+  document.getElementById('manual-active-count').textContent = `${categoryItems.length}件`;
+
+  const keyword = manualKeyword.toLowerCase();
+  const items = categoryItems.filter((item) => {
+    if (manualFilter === 'text' && item.hasFile) return false;
+    if (manualFilter === 'pdf' && !item.hasFile) return false;
+    if (!keyword) return true;
+    return `${item.title} ${item.description}`.toLowerCase().includes(keyword);
+  });
+
+  const container = document.getElementById('manual-list');
+  if (!items.length) {
+    container.innerHTML = '<p class="empty-msg">登録されている内容はありません。</p>';
     return;
   }
-  entries.forEach((e) => {
-    const li = document.createElement('li');
-    const metaText = e.hasFile ? `📄 ${escapeHtml(e.fileName || 'PDF')}` : escapeHtml(e.description || '');
-    li.innerHTML = `<div><strong>[${escapeHtml(e.category)}] ${escapeHtml(e.title)}</strong><div class="meta">${metaText}</div></div>`;
-    const del = document.createElement('button');
-    del.textContent = '削除';
-    del.className = 'small-btn danger-btn';
-    del.onclick = async () => {
-      await api(`/api/manual/${e.id}`, { method: 'DELETE' });
+
+  container.innerHTML = items
+    .map((item) => {
+      const meta = [item.createdBy, formatManualDate(item.createdAt)].filter(Boolean).join('　');
+      const desc = item.description ? `<div class="manual-card-desc">${escapeHtml(item.description)}</div>` : '';
+      const pdf = item.hasFile
+        ? `<a class="manual-card-pdf" href="/api/manual/${item.id}/file" target="_blank" rel="noopener">📄 ${escapeHtml(item.fileName || 'PDF')}を開く</a>`
+        : '';
+      const del =
+        currentUser.role === 'boss'
+          ? `<div class="manual-card-actions"><button type="button" class="small-btn danger-btn" data-delete-id="${item.id}">削除</button></div>`
+          : '';
+      return `<div class="manual-card">
+        <div class="manual-card-meta"><span class="cat-tag"># ${escapeHtml(item.category)}</span>${meta ? escapeHtml(meta) : ''}</div>
+        <div class="manual-card-title">${escapeHtml(item.title)}</div>
+        ${desc}
+        ${pdf}
+        ${del}
+      </div>`;
+    })
+    .join('');
+
+  container.querySelectorAll('[data-delete-id]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      await api(`/api/manual/${btn.dataset.deleteId}`, { method: 'DELETE' });
       loadManualList();
-      loadManualAdminList();
-    };
-    li.appendChild(del);
-    list.appendChild(li);
+    });
   });
 }
 
