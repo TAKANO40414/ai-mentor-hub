@@ -18,6 +18,14 @@ const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
 const MAX_TEXT_LENGTH = 150000;
 
+const CHAT_MODELS = [
+  { id: 'claude-sonnet-5', label: 'Claude Sonnet 5（バランス型・おすすめ）' },
+  { id: 'claude-opus-5', label: 'Claude Opus 5（高性能・じっくり回答）' },
+  { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5（高速・軽量）' },
+  { id: 'claude-fable-5', label: 'Claude Fable 5' }
+];
+const CHAT_MODEL_IDS = CHAT_MODELS.map((m) => m.id);
+
 const SUMMARIZE_SYSTEM_PROMPT = `あなたは社内文書を分かりやすく要約するアシスタントです。
 入力された文書の内容を、日本語で以下の形式のMarkdownとして出力してください。
 
@@ -34,7 +42,7 @@ const CHAT_SYSTEM_PROMPT =
 const MAX_CHAT_TURNS = 20;
 const MAX_CHAT_MESSAGE_LENGTH = 4000;
 
-async function callClaude(messages, systemPrompt, maxTokens = 4096) {
+async function callClaude(messages, systemPrompt, maxTokens = 4096, modelOverride) {
   if (!process.env.ANTHROPIC_API_KEY) {
     const err = new Error('ANTHROPIC_API_KEYが設定されていません。サーバー管理者に設定を依頼してください。');
     err.status = 500;
@@ -49,7 +57,7 @@ async function callClaude(messages, systemPrompt, maxTokens = 4096) {
       'content-type': 'application/json'
     },
     body: JSON.stringify({
-      model: MODEL,
+      model: modelOverride || MODEL,
       max_tokens: maxTokens,
       system: systemPrompt,
       messages
@@ -114,8 +122,12 @@ router.post('/summarize-pdf', requireBoss, (req, res) => {
   });
 });
 
+router.get('/chat-models', requireAuth, (req, res) => {
+  res.json({ models: CHAT_MODELS, default: MODEL });
+});
+
 router.post('/chat', requireAuth, async (req, res) => {
-  const { messages } = req.body || {};
+  const { messages, model } = req.body || {};
   if (!Array.isArray(messages) || !messages.length) {
     return res.status(400).json({ error: 'メッセージを入力してください。' });
   }
@@ -129,9 +141,11 @@ router.post('/chat', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'メッセージを入力してください。' });
   }
 
+  const selectedModel = CHAT_MODEL_IDS.includes(model) ? model : MODEL;
+
   try {
-    const reply = await callClaude(sanitized, CHAT_SYSTEM_PROMPT, 1024);
-    res.json({ reply });
+    const reply = await callClaude(sanitized, CHAT_SYSTEM_PROMPT, 1024, selectedModel);
+    res.json({ reply, model: selectedModel });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
   }

@@ -876,9 +876,11 @@ function renderMarkdownWithMermaid(markdown, containerEl) {
 
 /* ---------- AI chat (Claude, all users) ---------- */
 let aiChatHistory = [];
+let aiChatModel = null;
 
 function initAiChat() {
   renderAiChatThread(false);
+  loadAiChatModels();
   document.getElementById('ai-chat-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const input = document.getElementById('ai-chat-input');
@@ -888,13 +890,31 @@ function initAiChat() {
     aiChatHistory.push({ role: 'user', content: text });
     renderAiChatThread(true);
     try {
-      const { reply } = await api('/api/ai/chat', { method: 'POST', body: JSON.stringify({ messages: aiChatHistory }) });
+      const { reply } = await api('/api/ai/chat', {
+        method: 'POST',
+        body: JSON.stringify({ messages: aiChatHistory, model: aiChatModel })
+      });
       aiChatHistory.push({ role: 'assistant', content: reply });
     } catch (err) {
       aiChatHistory.push({ role: 'assistant', content: `⚠️ ${err.message}` });
     }
     renderAiChatThread(false);
   });
+}
+
+async function loadAiChatModels() {
+  try {
+    const { models, default: defaultModel } = await api('/api/ai/chat-models');
+    const select = document.getElementById('ai-chat-model');
+    select.innerHTML = models.map((m) => `<option value="${m.id}">${escapeHtml(m.label)}</option>`).join('');
+    aiChatModel = defaultModel;
+    select.value = defaultModel;
+    select.addEventListener('change', () => {
+      aiChatModel = select.value;
+    });
+  } catch (err) {
+    /* モデル一覧取得に失敗してもサーバー側デフォルトで動作する */
+  }
 }
 
 function renderAiChatThread(pending) {
