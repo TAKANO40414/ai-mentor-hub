@@ -874,6 +874,47 @@ function renderMarkdownWithMermaid(markdown, containerEl) {
   }
 }
 
+/* ---------- AI chat (Claude, all users) ---------- */
+let aiChatHistory = [];
+
+function initAiChat() {
+  renderAiChatThread(false);
+  document.getElementById('ai-chat-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('ai-chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    aiChatHistory.push({ role: 'user', content: text });
+    renderAiChatThread(true);
+    try {
+      const { reply } = await api('/api/ai/chat', { method: 'POST', body: JSON.stringify({ messages: aiChatHistory }) });
+      aiChatHistory.push({ role: 'assistant', content: reply });
+    } catch (err) {
+      aiChatHistory.push({ role: 'assistant', content: `⚠️ ${err.message}` });
+    }
+    renderAiChatThread(false);
+  });
+}
+
+function renderAiChatThread(pending) {
+  const el = document.getElementById('ai-chat-thread');
+  if (!aiChatHistory.length && !pending) {
+    el.innerHTML = '<p class="empty-msg">まだメッセージはありません。何でも聞いてみましょう。</p>';
+    return;
+  }
+  const bubbles = aiChatHistory.map((m) => {
+    if (m.role === 'user') {
+      return `<div class="ai-chat-bubble user">${escapeHtml(m.content)}</div>`;
+    }
+    const html = window.marked ? window.marked.parse(m.content) : escapeHtml(m.content);
+    return `<div class="ai-chat-bubble assistant">${html}</div>`;
+  });
+  if (pending) bubbles.push('<div class="ai-chat-bubble assistant pending">考え中…</div>');
+  el.innerHTML = bubbles.join('');
+  el.scrollTop = el.scrollHeight;
+}
+
 /* ---------- Utils ---------- */
 function escapeHtml(str) {
   return String(str || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -943,6 +984,7 @@ async function init() {
   initSchedule();
   initManual();
   initChat();
+  initAiChat();
   initAiSummary();
 }
 

@@ -25,6 +25,7 @@
     <button class="tab-btn" data-tab="chat">💬 チャット</button>
     <button class="tab-btn" data-tab="manual">📘 マニュアル</button>
     <button class="tab-btn" data-tab="ask">🤖 質問する</button>
+    <button class="tab-btn" data-tab="aichat">🗨️ AIチャット</button>
     <button class="tab-btn hidden" data-tab="ai">🧠 AI要約</button>
   </nav>
 
@@ -82,6 +83,19 @@
           <button type="submit">ナレッジを追加</button>
         </form>
         <ul id="knowledge-list" class="entry-list"></ul>
+      </div>
+    </section>
+
+    <!-- AI chat (Claude, all users) -->
+    <section id="tab-aichat" class="tab-panel">
+      <div class="card">
+        <h2>AIチャット</h2>
+        <p class="empty-msg">Claude（AI）と自由に会話できます。会話内容は保存されず、ページを離れるとリセットされます。</p>
+        <div id="ai-chat-thread" class="ai-chat-thread"></div>
+        <form id="ai-chat-form" class="ai-chat-input-bar">
+          <input type="text" id="ai-chat-input" placeholder="質問や相談を入力..." required autocomplete="off" />
+          <button type="submit">送信</button>
+        </form>
       </div>
     </section>
 
