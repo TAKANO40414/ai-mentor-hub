@@ -556,6 +556,25 @@ button:hover { background: var(--primary-dark); }
 .danger-btn { background: var(--pink); }
 .danger-btn:hover { background: var(--pink-dark); }
 
+.ai-mode-switch {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.2rem;
+}
+.ai-mode-btn {
+  background: var(--card-bg);
+  color: var(--primary-dark);
+  border: none;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.95rem;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 0;
+}
+.ai-mode-btn.active { background: var(--primary); color: white; }
+
 .ai-result {
   background: var(--bg);
   border: 1px solid var(--border);

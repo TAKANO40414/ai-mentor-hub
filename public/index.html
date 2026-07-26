@@ -77,19 +77,53 @@
       </div>
     </section>
 
-    <!-- AI chat (Claude, all users) -->
-    <section id="tab-aichat" class="tab-panel">
-      <div class="card">
-        <h2>AIチャット</h2>
-        <p class="empty-msg">Claude（AI）と自由に会話できます。会話内容は保存されず、ページを離れるとリセットされます。</p>
-        <label class="ai-chat-model-label">使用するモデル
-          <select id="ai-chat-model"></select>
-        </label>
-        <div id="ai-chat-thread" class="ai-chat-thread"></div>
-        <form id="ai-chat-form" class="ai-chat-input-bar">
-          <input type="text" id="ai-chat-input" placeholder="質問や相談を入力..." required autocomplete="off" />
-          <button type="submit">送信</button>
-        </form>
+    <!-- AI tools: chat (all users) + summary (boss only), chosen after entering -->
+    <section id="tab-ai-hub" class="tab-panel">
+      <div class="ai-mode-switch">
+        <button type="button" class="ai-mode-btn active" data-mode="chat">🗨️ AIチャット</button>
+        <button type="button" class="ai-mode-btn hidden" data-mode="summary">🧠 AI要約</button>
+      </div>
+
+      <div id="ai-mode-chat" class="ai-mode-panel">
+        <div class="card">
+          <h2>AIチャット</h2>
+          <p class="empty-msg">Claude（AI）と自由に会話できます。会話内容は保存されず、ページを離れるとリセットされます。</p>
+          <label class="ai-chat-model-label">使用するモデル
+            <select id="ai-chat-model"></select>
+          </label>
+          <div id="ai-chat-thread" class="ai-chat-thread"></div>
+          <form id="ai-chat-form" class="ai-chat-input-bar">
+            <input type="text" id="ai-chat-input" placeholder="質問や相談を入力..." required autocomplete="off" />
+            <button type="submit">送信</button>
+          </form>
+        </div>
+      </div>
+
+      <div id="ai-mode-summary" class="ai-mode-panel hidden">
+        <div class="card">
+          <h2>AI要約（図解付きドキュメント変換）</h2>
+          <p class="empty-msg">文書のテキストまたはPDFをClaude APIに送って、図解付きの要約ドキュメントに変換します。</p>
+
+          <h3>テキストから変換</h3>
+          <form id="ai-text-form" class="grid-form">
+            <textarea id="ai-text-input" placeholder="変換したい文書の内容を貼り付けてください" style="grid-column: 1 / -1;"></textarea>
+            <button type="submit">図解付きドキュメントに変換</button>
+          </form>
+
+          <h3>PDFから変換</h3>
+          <form id="ai-pdf-form" class="grid-form">
+            <input type="file" id="ai-pdf-input" accept="application/pdf" />
+            <button type="submit">PDFを図解付きドキュメントに変換</button>
+          </form>
+
+          <p id="ai-status" class="empty-msg"></p>
+
+          <div id="ai-result-wrap" class="hidden">
+            <h3>変換結果</h3>
+            <div id="ai-result" class="ai-result"></div>
+            <button type="button" id="ai-copy-btn" class="ghost-btn small-btn">結果をコピー</button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -192,33 +226,6 @@
       </div>
     </section>
 
-    <!-- ⑤ AI summary (boss only) -->
-    <section id="tab-ai" class="tab-panel">
-      <div class="card">
-        <h2>AI要約（図解付きドキュメント変換）</h2>
-        <p class="empty-msg">文書のテキストまたはPDFをClaude APIに送って、図解付きの要約ドキュメントに変換します。</p>
-
-        <h3>テキストから変換</h3>
-        <form id="ai-text-form" class="grid-form">
-          <textarea id="ai-text-input" placeholder="変換したい文書の内容を貼り付けてください" style="grid-column: 1 / -1;"></textarea>
-          <button type="submit">図解付きドキュメントに変換</button>
-        </form>
-
-        <h3>PDFから変換</h3>
-        <form id="ai-pdf-form" class="grid-form">
-          <input type="file" id="ai-pdf-input" accept="application/pdf" />
-          <button type="submit">PDFを図解付きドキュメントに変換</button>
-        </form>
-
-        <p id="ai-status" class="empty-msg"></p>
-
-        <div id="ai-result-wrap" class="hidden">
-          <h3>変換結果</h3>
-          <div id="ai-result" class="ai-result"></div>
-          <button type="button" id="ai-copy-btn" class="ghost-btn small-btn">結果をコピー</button>
-        </div>
-      </div>
-    </section>
   </main>
 
   <nav class="tabs">
@@ -226,8 +233,7 @@
     <button class="tab-btn" data-tab="chat">💬 チャット</button>
     <button class="tab-btn" data-tab="manual">📘 マニュアル</button>
     <button class="tab-btn" data-tab="ask">🤖 質問する</button>
-    <button class="tab-btn" data-tab="aichat">🗨️ AIチャット</button>
-    <button class="tab-btn hidden" data-tab="ai">🧠 AI要約</button>
+    <button class="tab-btn" data-tab="ai-hub">✨ AI</button>
   </nav>
 
   <div id="modal-overlay" class="modal-overlay hidden">

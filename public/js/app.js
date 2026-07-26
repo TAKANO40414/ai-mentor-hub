@@ -864,14 +864,24 @@ async function loadThread() {
   scrollChatToBottom();
 }
 
+/* ---------- AI hub: chat (all users) + summary (boss only), chosen after entering ---------- */
+function initAiHub() {
+  if (currentUser.role === 'boss') {
+    document.querySelector('.ai-mode-btn[data-mode="summary"]').classList.remove('hidden');
+  }
+  document.querySelectorAll('.ai-mode-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.ai-mode-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.ai-mode-panel').forEach((p) => p.classList.add('hidden'));
+      document.getElementById(`ai-mode-${btn.dataset.mode}`).classList.remove('hidden');
+    });
+  });
+}
+
 /* ---------- ⑤ AI summary (boss only) ---------- */
 function initAiSummary() {
-  const tabBtn = document.querySelector('.tab-btn[data-tab="ai"]');
-  if (currentUser.role !== 'boss') {
-    tabBtn.classList.add('hidden');
-    return;
-  }
-  tabBtn.classList.remove('hidden');
+  if (currentUser.role !== 'boss') return;
 
   if (window.mermaid) mermaid.initialize({ startOnLoad: false });
 
@@ -1069,6 +1079,7 @@ async function init() {
   initSchedule();
   initManual();
   initChat();
+  initAiHub();
   initAiChat();
   initAiSummary();
 }
