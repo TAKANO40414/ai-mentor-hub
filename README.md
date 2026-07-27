@@ -50,6 +50,17 @@ npm start
 
 `http://localhost:3000` にアクセスしてください。
 
+## Renderへのデプロイ（インターネット公開）
+
+このリポジトリには `render.yaml` が含まれているため、[Render](https://render.com/) のBlueprint機能でGitHubから直接デプロイできます。
+
+1. [Render](https://dashboard.render.com/) に登録し、GitHubアカウントを連携する
+2. ダッシュボードで **New + → Blueprint** を選び、この `ai-mentor-hub` リポジトリを選択する
+3. `render.yaml` の内容が自動検出されるので、`ANTHROPIC_API_KEY` の値を入力して「Apply」する（`SESSION_SECRET` は自動生成されます）
+4. デプロイ完了後に発行されるURL（`https://xxxxx.onrender.com`）にアクセスする
+
+**注意（無料プランの制約）**：Renderの無料プランはディスクが永続化されないため、`data/db.json`（予定・マニュアル・アナウンス・チャット履歴など）やアップロードしたPDFは、再デプロイやアプリの再起動（無料プランは15分間アクセスが無いと自動的にスリープします）のたびに初期状態（デモ用の3アカウントなど）にリセットされます。実運用でデータを保持したい場合は、有料プランの永続ディスクを追加するか、外部データベースへの移行が必要です。また、ローカルOllamaはRenderのサーバーからは利用できません（Claudeモデルのみ利用可能です）。
+
 ## デモ用アカウント
 
 | ユーザー名 | パスワード | 役割 |
