@@ -25,15 +25,23 @@ function maintenanceUser() {
   };
 }
 
+function defaultRoles() {
+  return [
+    { id: 'r-boss', name: '上司', type: 'boss' },
+    { id: 'r-member', name: '部下', type: 'member' }
+  ];
+}
+
 function seedData() {
   const today = todayStr();
   return {
     users: [
-      { id: 'u-boss', username: 'boss', name: '山田 上司', role: 'boss', passwordHash: hashPassword('boss123') },
-      { id: 'u-staff1', username: 'staff1', name: '佐藤 部下', role: 'member', passwordHash: hashPassword('staff123') },
-      { id: 'u-staff2', username: 'staff2', name: '鈴木 部下', role: 'member', passwordHash: hashPassword('staff123') },
+      { id: 'u-boss', username: 'boss', name: '山田 上司', role: 'boss', roleName: '上司', passwordHash: hashPassword('boss123') },
+      { id: 'u-staff1', username: 'staff1', name: '佐藤 部下', role: 'member', roleName: '部下', passwordHash: hashPassword('staff123') },
+      { id: 'u-staff2', username: 'staff2', name: '鈴木 部下', role: 'member', roleName: '部下', passwordHash: hashPassword('staff123') },
       maintenanceUser()
     ],
+    roles: defaultRoles(),
     knowledge: [
       {
         id: 'k-1',
@@ -101,11 +109,23 @@ function readDB() {
   }
   const raw = fs.readFileSync(DB_PATH, 'utf-8');
   const db = JSON.parse(raw);
-  // 既存データにメンテナンスアカウントが無ければ追加する（後方互換の移行処理）
+  // 後方互換の移行処理：不足データがあれば補って保存する
+  let changed = false;
   if (!db.users.some((u) => u.role === 'maintenance')) {
     db.users.push(maintenanceUser());
-    writeDB(db);
+    changed = true;
   }
+  if (!Array.isArray(db.roles) || !db.roles.length) {
+    db.roles = defaultRoles();
+    changed = true;
+  }
+  for (const u of db.users) {
+    if (!u.roleName && u.role !== 'maintenance') {
+      u.roleName = u.role === 'boss' ? '上司' : '部下';
+      changed = true;
+    }
+  }
+  if (changed) writeDB(db);
   return db;
 }
 

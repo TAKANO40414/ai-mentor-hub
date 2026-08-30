@@ -4,7 +4,7 @@ const { readDB } = require('../data');
 const { verifyPassword } = require('../crypto-util');
 
 function publicUser(u) {
-  return { id: u.id, username: u.username, name: u.name, role: u.role };
+  return { id: u.id, username: u.username, name: u.name, role: u.role, roleName: u.roleName || null };
 }
 
 router.post('/login', (req, res) => {

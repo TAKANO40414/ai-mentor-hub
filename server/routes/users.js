@@ -5,26 +5,25 @@ const { readDB, writeDB } = require('../data');
 const { hashPassword } = require('../crypto-util');
 const { requireMaintenance } = require('../middleware');
 
-const ROLES = ['boss', 'member'];
-
 function publicUser(u) {
-  return { id: u.id, username: u.username, name: u.name, role: u.role };
+  return { id: u.id, username: u.username, name: u.name, role: u.role, roleName: u.roleName || null };
 }
 
-function validate(db, { username, name, role, password }, { requirePassword, excludeId }) {
-  if (!name || !name.trim()) return '名前を入力してください。';
-  if (!ROLES.includes(role)) return '役職は上司または部下を選択してください。';
+function validate(db, { username, name, roleId, password }, { requirePassword, excludeId }) {
+  if (!name || !name.trim()) return { error: '名前を入力してください。' };
+  const role = db.roles.find((r) => r.id === roleId);
+  if (!role) return { error: '役職を選択してください。' };
   if (!username || !/^[a-zA-Z0-9_-]{3,20}$/.test(username)) {
-    return 'IDは半角英数字（3〜20文字、-_可）で入力してください。';
+    return { error: 'IDは半角英数字（3〜20文字、-_可）で入力してください。' };
   }
   if (db.users.some((u) => u.username === username && u.id !== excludeId)) {
-    return `ID「${username}」は既に使われています。`;
+    return { error: `ID「${username}」は既に使われています。` };
   }
   if (requirePassword && (!password || password.length < 6)) {
-    return 'パスワードは6文字以上で入力してください。';
+    return { error: 'パスワードは6文字以上で入力してください。' };
   }
-  if (password && password.length < 6) return 'パスワードは6文字以上で入力してください。';
-  return null;
+  if (password && password.length < 6) return { error: 'パスワードは6文字以上で入力してください。' };
+  return { role };
 }
 
 router.get('/', requireMaintenance, (req, res) => {
@@ -33,16 +32,17 @@ router.get('/', requireMaintenance, (req, res) => {
 });
 
 router.post('/', requireMaintenance, (req, res) => {
-  const { username, name, role, password } = req.body || {};
+  const { username, name, roleId, password } = req.body || {};
   const db = readDB();
-  const err = validate(db, { username, name, role, password }, { requirePassword: true });
-  if (err) return res.status(400).json({ error: err });
+  const { error, role } = validate(db, { username, name, roleId, password }, { requirePassword: true });
+  if (error) return res.status(400).json({ error });
 
   const user = {
     id: `u-${crypto.randomUUID()}`,
     username: username.trim(),
     name: name.trim(),
-    role,
+    role: role.type,
+    roleName: role.name,
     passwordHash: hashPassword(password)
   };
   db.users.push(user);
@@ -57,13 +57,14 @@ router.put('/:id', requireMaintenance, (req, res) => {
     return res.status(404).json({ error: 'ユーザーが見つかりません。' });
   }
 
-  const { username, name, role, password } = req.body || {};
-  const err = validate(db, { username, name, role, password }, { requirePassword: false, excludeId: user.id });
-  if (err) return res.status(400).json({ error: err });
+  const { username, name, roleId, password } = req.body || {};
+  const { error, role } = validate(db, { username, name, roleId, password }, { requirePassword: false, excludeId: user.id });
+  if (error) return res.status(400).json({ error });
 
   user.username = username.trim();
   user.name = name.trim();
-  user.role = role;
+  user.role = role.type;
+  user.roleName = role.name;
   if (password) user.passwordHash = hashPassword(password);
   writeDB(db);
   res.json({ user: publicUser(user) });

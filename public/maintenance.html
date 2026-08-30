@@ -33,6 +33,29 @@
 }
 .user-row .role-tag.boss { background: var(--pink-bg); color: var(--pink-dark); }
 .user-row .role-tag.member { background: var(--green-bg); color: var(--green); }
+.role-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.role-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.3rem 0.5rem 0.3rem 0.9rem;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+.role-chip.boss { background: var(--pink-bg); color: var(--pink-dark); border-color: var(--pink); }
+.role-chip.member { background: var(--green-bg); color: var(--green); border-color: var(--green); }
+.role-chip .type { font-size: 0.72rem; font-weight: normal; }
+.role-chip button {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 0.85rem;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 0.3rem;
+}
 </style>
 </head>
 <body>
@@ -53,13 +76,25 @@
     </div>
 
     <div class="card">
+      <h3 style="margin-top: 0;">役職管理</h3>
+      <p class="empty-msg">ユーザーに設定できる役職を追加できます。各役職には権限（上司相当＝管理機能あり／部下相当＝一般）を紐づけます。使用中の役職は削除できません。</p>
+      <div id="role-list" class="role-list"></div>
+      <form id="role-add-form" class="grid-form" style="margin-top: 0.8rem;">
+        <input type="text" id="role-add-name" placeholder="役職名（例：課長）" required maxlength="20" />
+        <select id="role-add-type">
+          <option value="member">部下相当（一般）</option>
+          <option value="boss">上司相当（管理機能あり）</option>
+        </select>
+        <button type="submit">役職を追加</button>
+      </form>
+      <p id="role-error" class="error-text"></p>
+    </div>
+
+    <div class="card">
       <h3 style="margin-top: 0;">新しいユーザーを追加</h3>
       <form id="user-add-form" class="grid-form">
         <input type="text" id="add-name" placeholder="名前（例：田中 太郎）" required />
-        <select id="add-role">
-          <option value="member">部下</option>
-          <option value="boss">上司</option>
-        </select>
+        <select id="add-role"></select>
         <input type="text" id="add-username" placeholder="ID（半角英数字3〜20文字）" required />
         <input type="password" id="add-password" placeholder="パスワード（6文字以上）" required autocomplete="new-password" />
         <button type="submit">追加</button>

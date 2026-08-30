@@ -16,7 +16,47 @@ function escapeHtml(str) {
   return String(str || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-const ROLE_LABELS = { boss: '上司', member: '部下' };
+const TYPE_LABELS = { boss: '上司相当', member: '部下相当' };
+let roles = [];
+
+function roleOptions(selectedRole) {
+  // ユーザーの現在の役職名に一致する役職を優先し、無ければ権限タイプで代替する
+  let selectedId = null;
+  if (selectedRole) {
+    const byName = roles.find((r) => r.name === selectedRole.roleName);
+    const byType = roles.find((r) => r.type === selectedRole.role);
+    selectedId = (byName || byType || {}).id;
+  }
+  return roles
+    .map((r) => `<option value="${r.id}"${r.id === selectedId ? ' selected' : ''}>${escapeHtml(r.name)}（${TYPE_LABELS[r.type]}）</option>`)
+    .join('');
+}
+
+async function loadRoles() {
+  const errEl = document.getElementById('role-error');
+  errEl.textContent = '';
+  ({ roles } = await api('/api/roles'));
+  const listEl = document.getElementById('role-list');
+  listEl.innerHTML = '';
+  roles.forEach((r) => {
+    const chip = document.createElement('span');
+    chip.className = `role-chip ${r.type}`;
+    chip.innerHTML = `${escapeHtml(r.name)}<span class="type">${TYPE_LABELS[r.type]}</span><button type="button" aria-label="削除">✕</button>`;
+    chip.querySelector('button').addEventListener('click', async () => {
+      if (!confirm(`役職「${r.name}」を削除しますか？`)) return;
+      errEl.textContent = '';
+      try {
+        await api(`/api/roles/${r.id}`, { method: 'DELETE' });
+        await loadRoles();
+        loadUsers();
+      } catch (err) {
+        errEl.textContent = err.message;
+      }
+    });
+    listEl.appendChild(chip);
+  });
+  document.getElementById('add-role').innerHTML = roleOptions(null);
+}
 
 async function loadUsers() {
   const listEl = document.getElementById('user-list');
@@ -32,13 +72,10 @@ async function loadUsers() {
     const row = document.createElement('div');
     row.className = 'user-row';
     row.innerHTML = `
-      <span class="role-tag ${u.role}">${ROLE_LABELS[u.role] || u.role}</span>
+      <span class="role-tag ${u.role}">${escapeHtml(u.roleName || (u.role === 'boss' ? '上司' : '部下'))}</span>
       <div class="user-row-grid">
         <label>名前<input type="text" class="f-name" value="${escapeHtml(u.name)}" /></label>
-        <label>役職<select class="f-role">
-          <option value="member"${u.role === 'member' ? ' selected' : ''}>部下</option>
-          <option value="boss"${u.role === 'boss' ? ' selected' : ''}>上司</option>
-        </select></label>
+        <label>役職<select class="f-role">${roleOptions(u)}</select></label>
         <label>ID<input type="text" class="f-username" value="${escapeHtml(u.username)}" /></label>
         <label>新しいパスワード<input type="password" class="f-password" placeholder="変更する場合のみ入力" autocomplete="new-password" /></label>
       </div>
@@ -56,7 +93,7 @@ async function loadUsers() {
           method: 'PUT',
           body: JSON.stringify({
             name: row.querySelector('.f-name').value.trim(),
-            role: row.querySelector('.f-role').value,
+            roleId: row.querySelector('.f-role').value,
             username: row.querySelector('.f-username').value.trim(),
             password: row.querySelector('.f-password').value || undefined
           })
@@ -80,6 +117,26 @@ async function loadUsers() {
   });
 }
 
+document.getElementById('role-add-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errEl = document.getElementById('role-error');
+  errEl.textContent = '';
+  try {
+    await api('/api/roles', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: document.getElementById('role-add-name').value.trim(),
+        type: document.getElementById('role-add-type').value
+      })
+    });
+    e.target.reset();
+    await loadRoles();
+    loadUsers();
+  } catch (err) {
+    errEl.textContent = err.message;
+  }
+});
+
 document.getElementById('user-add-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const errEl = document.getElementById('add-error');
@@ -89,7 +146,7 @@ document.getElementById('user-add-form').addEventListener('submit', async (e) =>
       method: 'POST',
       body: JSON.stringify({
         name: document.getElementById('add-name').value.trim(),
-        role: document.getElementById('add-role').value,
+        roleId: document.getElementById('add-role').value,
         username: document.getElementById('add-username').value.trim(),
         password: document.getElementById('add-password').value
       })
@@ -113,6 +170,7 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
       window.location.href = '/login.html';
       return;
     }
+    await loadRoles();
     loadUsers();
   } catch (err) {
     /* api() redirects to login on 401 */

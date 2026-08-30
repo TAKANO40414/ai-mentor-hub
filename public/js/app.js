@@ -1074,7 +1074,7 @@ async function init() {
 
   renderAnnouncementBanner(data.announcement);
 
-  document.getElementById('user-badge').textContent = `${currentUser.name}（${currentUser.role === 'boss' ? '上司' : '部下'}）`;
+  document.getElementById('user-badge').textContent = `${currentUser.name}（${currentUser.roleName || (currentUser.role === 'boss' ? '上司' : '部下')}）`;
   document.getElementById('logout-btn').addEventListener('click', async () => {
     await api('/api/auth/logout', { method: 'POST' });
     window.location.href = '/login.html';
