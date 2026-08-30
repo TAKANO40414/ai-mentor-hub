@@ -11,6 +11,12 @@
     <img src="rogo_2.png" alt="ジェネギャすきる" class="logo-img logo-img-login" />
     <p class="subtitle">上司と部下をつなぐ社内サポートアプリ</p>
     <form id="login-form">
+      <label>ログイン先
+        <select id="login-target">
+          <option value="app">アプリ</option>
+          <option value="maintenance">メンテナンス画面</option>
+        </select>
+      </label>
       <label>ユーザー名
         <input type="text" id="username" autocomplete="username" required />
       </label>
@@ -26,6 +32,7 @@
         <li>上司: <code>boss</code> / <code>boss123</code></li>
         <li>部下: <code>staff1</code> / <code>staff123</code></li>
         <li>部下: <code>staff2</code> / <code>staff123</code></li>
+        <li>メンテナンス: <code>mainte</code> / <code>mainte123</code></li>
       </ul>
     </div>
   </div>

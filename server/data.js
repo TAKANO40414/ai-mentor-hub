@@ -15,13 +15,24 @@ function todayStr() {
   return localDateStr(new Date());
 }
 
+function maintenanceUser() {
+  return {
+    id: 'u-mainte',
+    username: 'mainte',
+    name: 'メンテナンス管理者',
+    role: 'maintenance',
+    passwordHash: hashPassword('mainte123')
+  };
+}
+
 function seedData() {
   const today = todayStr();
   return {
     users: [
       { id: 'u-boss', username: 'boss', name: '山田 上司', role: 'boss', passwordHash: hashPassword('boss123') },
       { id: 'u-staff1', username: 'staff1', name: '佐藤 部下', role: 'member', passwordHash: hashPassword('staff123') },
-      { id: 'u-staff2', username: 'staff2', name: '鈴木 部下', role: 'member', passwordHash: hashPassword('staff123') }
+      { id: 'u-staff2', username: 'staff2', name: '鈴木 部下', role: 'member', passwordHash: hashPassword('staff123') },
+      maintenanceUser()
     ],
     knowledge: [
       {
@@ -89,7 +100,13 @@ function readDB() {
     writeDB(seedData());
   }
   const raw = fs.readFileSync(DB_PATH, 'utf-8');
-  return JSON.parse(raw);
+  const db = JSON.parse(raw);
+  // 既存データにメンテナンスアカウントが無ければ追加する（後方互換の移行処理）
+  if (!db.users.some((u) => u.role === 'maintenance')) {
+    db.users.push(maintenanceUser());
+    writeDB(db);
+  }
+  return db;
 }
 
 function writeDB(db) {

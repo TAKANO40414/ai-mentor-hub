@@ -12,4 +12,11 @@ function requireBoss(req, res, next) {
   next();
 }
 
-module.exports = { requireAuth, requireBoss };
+function requireMaintenance(req, res, next) {
+  if (!req.session.user || req.session.user.role !== 'maintenance') {
+    return res.status(403).json({ error: 'メンテナンス権限が必要です。' });
+  }
+  next();
+}
+
+module.exports = { requireAuth, requireBoss, requireMaintenance };

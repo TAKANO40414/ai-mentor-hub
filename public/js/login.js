@@ -2,6 +2,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value;
+  const target = document.getElementById('login-target').value;
   const errorEl = document.getElementById('login-error');
   errorEl.textContent = '';
 
@@ -9,14 +10,14 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ username, password, target })
     });
     const data = await res.json();
     if (!res.ok) {
       errorEl.textContent = data.error || 'ログインに失敗しました。';
       return;
     }
-    window.location.href = '/index.html';
+    window.location.href = data.user.role === 'maintenance' ? '/maintenance.html' : '/index.html';
   } catch (err) {
     errorEl.textContent = '通信エラーが発生しました。';
   }
