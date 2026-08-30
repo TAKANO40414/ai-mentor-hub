@@ -226,6 +226,10 @@
       </div>
     </section>
 
+    <!-- 音くらべ検品 (browser-only audio inspection tool) -->
+    <section id="tab-kenpin" class="tab-panel">
+      <iframe id="kenpin-frame" class="kenpin-frame" title="音くらべ検品" data-src="otokurabe.html" allow="microphone"></iframe>
+    </section>
   </main>
 
   <nav class="tabs">
@@ -282,6 +286,16 @@
         <ellipse cx="24" cy="21" rx="2" ry="2.6" fill="#1a1a1a"/>
       </svg>
       <span class="tab-label">ai</span>
+    </button>
+    <button class="tab-btn" data-tab="kenpin">
+      <svg class="tab-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 16h5l7-6v20l-7-6H8a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2Z" fill="#0e7c86"/>
+        <path d="M25 14a8 8 0 0 1 0 12" stroke="#2fb6a3" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M29 10a14 14 0 0 1 0 20" stroke="#e0a63c" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="31" cy="30" r="6.5" fill="#fff" stroke="#d64545" stroke-width="2"/>
+        <path d="m28.5 30 2 2 3.5-4" stroke="#d64545" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+      <span class="tab-label">検品</span>
     </button>
   </nav>
 

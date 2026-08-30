@@ -1,0 +1,667 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>音くらべ検品</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F4F7F7; --panel:#FFFFFF; --ink:#1B2427; --sub:#5B6B6E;
+  --line:#D8E0E0; --accent:#0E7C86; --accent-soft:#E1EEEF;
+  --ok:#2E9E5B; --ng:#D64545; --warn:#C98A1B;
+  --canvas-bg:#0E1416;
+}
+:root:not([data-theme="light"]){}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#12181A; --panel:#1A2225; --ink:#E8EEEE; --sub:#93A5A8;
+    --line:#2C383B; --accent:#3FB2BC; --accent-soft:#173237;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#12181A; --panel:#1A2225; --ink:#E8EEEE; --sub:#93A5A8;
+  --line:#2C383B; --accent:#3FB2BC; --accent-soft:#173237;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"IBM Plex Sans JP",system-ui,sans-serif;
+  font-size:15px; line-height:1.6;
+}
+.wrap{max-width:1080px; margin:0 auto; padding:20px 20px 60px}
+header{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:18px}
+h1{font-size:22px; font-weight:700; margin:0; letter-spacing:.02em}
+h1 small{font-size:12px; color:var(--sub); font-weight:400; margin-left:10px}
+.badge{
+  margin-left:auto; font-size:20px; font-weight:700; padding:6px 22px; border-radius:6px;
+  border:2px solid var(--line); color:var(--sub); letter-spacing:.1em;
+}
+.badge.ok{border-color:var(--ok); color:var(--ok); background:color-mix(in srgb,var(--ok) 8%,transparent)}
+.badge.ng{border-color:var(--ng); color:var(--ng); background:color-mix(in srgb,var(--ng) 8%,transparent)}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+@media(max-width:720px){.grid2{grid-template-columns:1fr}}
+.drop{
+  background:var(--panel); border:2px dashed var(--line); border-radius:10px;
+  padding:16px; cursor:pointer; transition:border-color .15s;
+}
+.drop:hover,.drop.over{border-color:var(--accent)}
+.drop .tag{font-size:11px; letter-spacing:.12em; color:var(--accent); font-weight:700}
+.drop .fname{font-family:"IBM Plex Mono",monospace; font-size:13px; margin-top:4px; word-break:break-all}
+.drop .meta{font-size:12px; color:var(--sub); font-family:"IBM Plex Mono",monospace}
+.drop button.play,.drop button.mic{
+  margin-top:8px; margin-right:8px; font:inherit; font-size:12px; padding:3px 14px; border-radius:5px;
+  border:1px solid var(--accent); background:none; color:var(--accent); cursor:pointer;
+}
+.drop button.play:hover,.drop button.mic:hover{background:var(--accent-soft)}
+.drop button.mic.rec{border-color:var(--ng); color:var(--ng); animation:blink 1s step-end infinite}
+@keyframes blink{50%{opacity:.55}}
+@media (prefers-reduced-motion: reduce){.drop button.mic.rec{animation:none}}
+.drop.recording{border-color:var(--ng); border-style:solid}
+.lvl{height:6px; border-radius:3px; background:var(--line); margin-top:8px; overflow:hidden}
+.lvl i{display:block; height:100%; width:0; background:var(--ok); transition:width .08s linear}
+.refrow{display:flex; align-items:center; gap:12px; padding:7px 10px; border:1px solid var(--line);
+  border-radius:7px; margin-bottom:6px; flex-wrap:wrap}
+.refrow.sel{border-color:var(--accent); background:var(--accent-soft)}
+.refrow .rname{font-weight:500; word-break:break-all}
+.refrow .rmeta{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--sub)}
+.refrow .rbtns{margin-left:auto; display:flex; gap:6px}
+.refrow button{font:inherit; font-size:12px; padding:2px 12px; border-radius:5px; cursor:pointer;
+  border:1px solid var(--accent); background:none; color:var(--accent)}
+.refrow button:hover{background:var(--accent-soft)}
+.refrow button.del{border-color:var(--line); color:var(--sub)}
+.refrow button.del.arm{border-color:var(--ng); color:var(--ng)}
+.refhint{font-size:12.5px; color:var(--sub)}
+.toolbar{
+  display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+  background:var(--panel); border:1px solid var(--line); border-radius:10px;
+  padding:12px 16px; margin:14px 0;
+}
+.toolbar label{font-size:13px; color:var(--sub); display:flex; align-items:center; gap:8px}
+.toolbar input[type=range]{accent-color:var(--accent); width:170px}
+.toolbar .thval{font-family:"IBM Plex Mono",monospace; color:var(--ink); min-width:5.5em}
+.toolbar button{
+  font:inherit; font-size:13px; padding:6px 16px; border-radius:6px; cursor:pointer;
+  border:1px solid var(--accent); background:var(--accent); color:#fff;
+}
+.toolbar button.ghost{background:none; color:var(--accent)}
+.toolbar button:hover{filter:brightness(1.08)}
+.metrics{display:flex; gap:10px; flex-wrap:wrap; margin:0 0 14px}
+.chip{
+  background:var(--panel); border:1px solid var(--line); border-radius:8px;
+  padding:8px 14px; min-width:130px;
+}
+.chip .k{font-size:11px; color:var(--sub); letter-spacing:.06em}
+.chip .v{font-family:"IBM Plex Mono",monospace; font-size:17px; font-weight:500}
+.panel{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px 16px 14px; margin-bottom:14px}
+.panel h2{font-size:13px; font-weight:700; letter-spacing:.08em; color:var(--sub); margin:0 0 8px}
+.panel h2 b{color:var(--accent)}
+canvas{display:block; width:100%; border-radius:6px; background:var(--canvas-bg)}
+.legend{display:flex; gap:16px; font-size:12px; color:var(--sub); margin-top:6px; font-family:"IBM Plex Mono",monospace}
+.sw{display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:baseline}
+.regions{font-size:13px; margin-top:8px}
+.regions .r{font-family:"IBM Plex Mono",monospace; color:var(--ng); margin-right:14px}
+.empty{color:var(--sub); font-size:13px; padding:30px 0; text-align:center}
+footer{font-size:12px; color:var(--sub); margin-top:8px}
+input[type=file]{display:none}
+button:focus-visible,.drop:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>音くらべ検品<small>基準音声と検査音声を比較し、差を数値化・可視化して良否判定します</small></h1>
+  <div class="badge" id="badge">未判定</div>
+</header>
+
+<div class="grid2">
+  <div class="drop" id="dropA" tabindex="0">
+    <div class="tag">A ｜ 基準音声（正常品）</div>
+    <div class="fname" id="nameA">クリックまたはドラッグ＆ドロップで読み込み</div>
+    <div class="meta" id="metaA">&nbsp;</div>
+    <button class="play" id="playA" hidden>▶ 再生</button><button class="mic" id="micA">● マイクで録音</button><button class="play" id="regA" hidden>＋ 正常品リストに登録</button>
+    <div class="lvl" id="lvlBoxA" hidden><i id="lvlA"></i></div>
+  </div>
+  <div class="drop" id="dropB" tabindex="0">
+    <div class="tag">B ｜ 検査音声</div>
+    <div class="fname" id="nameB">クリックまたはドラッグ＆ドロップで読み込み</div>
+    <div class="meta" id="metaB">&nbsp;</div>
+    <button class="play" id="playB" hidden>▶ 再生</button><button class="mic" id="micB">● マイクで録音</button>
+    <div class="lvl" id="lvlBoxB" hidden><i id="lvlB"></i></div>
+  </div>
+</div>
+<input type="file" id="fileA" accept="audio/*"><input type="file" id="fileB" accept="audio/*">
+
+<div class="panel" id="refPanel" style="margin-top:14px; margin-bottom:0">
+  <h2>正常品リスト</h2>
+  <div id="refRows"></div>
+  <div class="refhint" id="refHint">Aに基準音声を読み込んで「＋ 正常品リストに登録」を押すと、このブラウザに保存されます。次回からはリストから「選択」するだけで基準音声をセットできます。</div>
+</div>
+
+<div class="toolbar">
+  <label>判定しきい値
+    <input type="range" id="th" min="2" max="20" step="0.5" value="7">
+    <span class="thval" id="thval">7.0 dB</span>
+  </label>
+  <label><input type="checkbox" id="align" checked> 開始位置を自動で揃える</label>
+  <button class="ghost" id="demo">デモ音声で試す</button>
+  <button id="run" disabled>比較する</button>
+</div>
+
+<div class="metrics" id="metrics" hidden>
+  <div class="chip"><div class="k">平均差</div><div class="v" id="mMean">–</div></div>
+  <div class="chip"><div class="k">最大差</div><div class="v" id="mMax">–</div></div>
+  <div class="chip"><div class="k">スペクトル相関</div><div class="v" id="mCorr">–</div></div>
+  <div class="chip"><div class="k">しきい値超過率</div><div class="v" id="mRate">–</div></div>
+  <div class="chip"><div class="k">位置合わせ補正</div><div class="v" id="mLag">–</div></div>
+</div>
+
+<div id="viz" hidden>
+  <div class="panel">
+    <h2>波形の重ね合わせ</h2>
+    <canvas id="cWave" height="140"></canvas>
+    <div class="legend"><span><span class="sw" style="background:#3FB2BC"></span>A 基準</span><span><span class="sw" style="background:#E0A63C"></span>B 検査</span></div>
+  </div>
+  <div class="panel"><h2>スペクトログラム <b>A（基準）</b></h2><canvas id="cSpecA" height="170"></canvas></div>
+  <div class="panel"><h2>スペクトログラム <b>B（検査）</b></h2><canvas id="cSpecB" height="170"></canvas></div>
+  <div class="panel">
+    <h2>差分ヒートマップ（周波数×時間、明るいほど差が大きい）</h2>
+    <canvas id="cDiff" height="170"></canvas>
+  </div>
+  <div class="panel">
+    <h2>差スコアの推移（赤線＝しきい値、赤帯＝異常区間）</h2>
+    <canvas id="cScore" height="130"></canvas>
+    <div class="regions" id="regions"></div>
+  </div>
+</div>
+<div class="empty" id="empty">Aに録音済みの基準音声を読み込み、Bは「マイクで録音」でその場の音を取り込めます（録音停止で自動比較）。手元に音声がない場合は「デモ音声で試す」で動作を確認できます。</div>
+
+<footer>すべてブラウザ内で処理され、音声・録音が外部に送信されることはありません。マイク録音は音声補正（エコーキャンセル・自動ゲイン）を無効にした生録音です。解析は先頭30秒まで（FFT 2048 / hop 512、対数バンドのdB差で評価）。</footer>
+</div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const FFT_N=2048, HOP=512, MAX_SEC=30, DB_FLOOR=-90, SILENCE=-70;
+let ac=null;
+const A={buf:null,name:""}, B={buf:null,name:""};
+let last=null; // {specA,specB,frames,bins,sr,lagFrames,scores}
+
+function ctx(){ if(!ac) ac=new (window.AudioContext||window.webkitAudioContext)(); return ac; }
+
+/* ---------- FFT ---------- */
+function fft(re,im){
+  const n=re.length;
+  for(let i=1,j=0;i<n;i++){let bit=n>>1;for(;j&bit;bit>>=1)j^=bit;j|=bit;
+    if(i<j){let t=re[i];re[i]=re[j];re[j]=t;t=im[i];im[i]=im[j];im[j]=t;}}
+  for(let len=2;len<=n;len<<=1){
+    const ang=-2*Math.PI/len, wr=Math.cos(ang), wi=Math.sin(ang), h=len>>1;
+    for(let i=0;i<n;i+=len){
+      let cr=1,ci=0;
+      for(let k=0;k<h;k++){
+        const ar=re[i+k],ai=im[i+k],br=re[i+k+h],bi=im[i+k+h];
+        const vr=br*cr-bi*ci, vi=br*ci+bi*cr;
+        re[i+k]=ar+vr; im[i+k]=ai+vi; re[i+k+h]=ar-vr; im[i+k+h]=ai-vi;
+        const t=cr*wr-ci*wi; ci=cr*wi+ci*wr; cr=t;
+      }
+    }
+  }
+}
+const HANN=new Float32Array(FFT_N);
+for(let i=0;i<FFT_N;i++) HANN[i]=0.5-0.5*Math.cos(2*Math.PI*i/(FFT_N-1));
+
+function toMono(buf){
+  const n=Math.min(buf.length, Math.floor(MAX_SEC*buf.sampleRate));
+  const out=new Float32Array(n);
+  for(let c=0;c<buf.numberOfChannels;c++){
+    const d=buf.getChannelData(c);
+    for(let i=0;i<n;i++) out[i]+=d[i];
+  }
+  const g=1/buf.numberOfChannels;
+  for(let i=0;i<n;i++) out[i]*=g;
+  return out;
+}
+function stft(x){
+  const frames=Math.max(1,Math.floor((x.length-FFT_N)/HOP)+1), bins=FFT_N/2;
+  const S=new Float32Array(frames*bins);
+  const re=new Float32Array(FFT_N), im=new Float32Array(FFT_N);
+  for(let f=0;f<frames;f++){
+    const o=f*HOP;
+    for(let i=0;i<FFT_N;i++){re[i]=(x[o+i]||0)*HANN[i]; im[i]=0;}
+    fft(re,im);
+    for(let k=0;k<bins;k++){
+      const m=Math.sqrt(re[k]*re[k]+im[k]*im[k])/FFT_N;
+      S[f*bins+k]=Math.max(DB_FLOOR, 20*Math.log10(m+1e-12));
+    }
+  }
+  return {S,frames,bins};
+}
+/* envelope cross-correlation for start alignment (in frames) */
+function frameRMS(x){
+  const n=Math.floor(x.length/HOP), e=new Float32Array(n);
+  for(let f=0;f<n;f++){let s=0;for(let i=f*HOP;i<f*HOP+HOP;i++)s+=x[i]*x[i];e[f]=Math.sqrt(s/HOP);}
+  return e;
+}
+function bestLag(ea,eb,sr){
+  const stats=e=>{let m=0;for(const v of e)m+=v;m/=e.length;
+    let s=0;for(const v of e)s+=(v-m)*(v-m);return [m,Math.sqrt(s/e.length)||1];};
+  const [ma,sa]=stats(ea), [mb,sb]=stats(eb);
+  const max=Math.min(Math.floor(2*sr/HOP), Math.floor(Math.min(ea.length,eb.length)/2));
+  const r=lag=>{
+    let s=0,c=0;
+    for(let i=0;i<ea.length;i++){
+      const j=i+lag; if(j<0||j>=eb.length)continue;
+      s+=(ea[i]-ma)*(eb[j]-mb); c++;
+    }
+    return c>10 ? s/(c*sa*sb) : -Infinity;
+  };
+  let best=0,bv=r(0);
+  const r0=bv;
+  for(let lag=-max;lag<=max;lag++){
+    if(!lag)continue;
+    const v=r(lag); if(v>bv){bv=v;best=lag;}
+  }
+  // 定常音では相関が平坦になり誤検出しやすいので、明確に改善する場合のみ補正する
+  return (bv-r0>0.05) ? best : 0;
+}
+/* log-spaced band aggregation: per-bin dB diffs are dominated by noise, band energies are stable */
+const NBANDS=96, FMIN=40;
+function bandIndex(bins,sr){
+  const ny=sr/2, idx=new Int16Array(bins);
+  for(let k=0;k<bins;k++){
+    const f=Math.max(FMIN,k*ny/bins);
+    idx[k]=Math.min(NBANDS-1,Math.floor(Math.log(f/FMIN)/Math.log(ny/FMIN)*NBANDS));
+  }
+  return idx;
+}
+function toBands(S,frames,bins,idx){
+  const B=new Float32Array(frames*NBANDS), cnt=new Float32Array(NBANDS);
+  for(let k=0;k<bins;k++)cnt[idx[k]]++;
+  for(let f=0;f<frames;f++){
+    const p=new Float32Array(NBANDS);
+    for(let k=0;k<bins;k++)p[idx[k]]+=Math.pow(10,S[f*bins+k]/10);
+    for(let b=0;b<NBANDS;b++)
+      B[f*NBANDS+b]=cnt[b]?Math.max(DB_FLOOR,10*Math.log10(p[b]/cnt[b]+1e-12)):DB_FLOOR;
+  }
+  return B;
+}
+
+/* ---------- colormaps ---------- */
+const VIR=[[68,1,84],[59,82,139],[33,145,140],[94,201,98],[253,231,37]];
+function cmap(t,stops){
+  t=Math.min(1,Math.max(0,t));
+  const p=t*(stops.length-1), i=Math.min(stops.length-2,Math.floor(p)), f=p-i;
+  const a=stops[i],b=stops[i+1];
+  return [a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f, a[2]+(b[2]-a[2])*f];
+}
+const HEAT=[[10,12,20],[40,20,80],[160,40,60],[240,120,40],[255,235,120]];
+
+/* ---------- drawing ---------- */
+function fitCanvas(cv){
+  const w=cv.clientWidth||800, h=parseInt(cv.getAttribute("height"),10);
+  cv.width=w*devicePixelRatio; cv.height=h*devicePixelRatio;
+  const g=cv.getContext("2d"); g.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  return [g,w,h];
+}
+function drawSpec(cv,S,frames,bins,stops,lo,hi,marks,logf){
+  const [g,w,h]=fitCanvas(cv);
+  const showBins=Math.min(bins,512);
+  const img=g.createImageData(frames,showBins);
+  for(let f=0;f<frames;f++)for(let y=0;y<showBins;y++){
+    const k=Math.floor(y*bins/showBins);
+    const t=(S[f*bins+k]-lo)/(hi-lo);
+    const c=cmap(t,stops), p=((showBins-1-y)*frames+f)*4;
+    img.data[p]=c[0]; img.data[p+1]=c[1]; img.data[p+2]=c[2]; img.data[p+3]=255;
+  }
+  const off=document.createElement("canvas"); off.width=frames; off.height=showBins;
+  off.getContext("2d").putImageData(img,0,0);
+  g.imageSmoothingEnabled=false;
+  g.clearRect(0,0,w,h); g.drawImage(off,0,0,w,h);
+  if(marks){ g.fillStyle="rgba(214,69,69,.28)";
+    for(const [s,e] of marks) g.fillRect(s/frames*w,0,Math.max(2,(e-s)/frames*w),h); }
+  // freq labels
+  g.font="10px 'IBM Plex Mono',monospace"; g.fillStyle="rgba(255,255,255,.55)";
+  const ny=last? last.sr/2 : 22050;
+  for(const fr of [0.25,0.5,0.75]){
+    const f=logf ? FMIN*Math.pow(ny/FMIN,fr) : ny*fr;
+    g.fillText((f/1000).toFixed(1)+"kHz", 4, h-fr*h+10);
+  }
+}
+function drawWave(){
+  const cv=$("cWave"), [g,w,h]=fitCanvas(cv);
+  g.clearRect(0,0,w,h);
+  const draw=(x,color)=>{
+    if(!x)return;
+    g.strokeStyle=color; g.globalAlpha=.85; g.lineWidth=1; g.beginPath();
+    const step=Math.max(1,Math.floor(x.length/w));
+    for(let px=0;px<w;px++){
+      let mn=1,mx=-1;
+      for(let i=px*step;i<Math.min(x.length,(px+1)*step);i++){const v=x[i];if(v<mn)mn=v;if(v>mx)mx=v;}
+      if(mn>mx)continue;
+      g.moveTo(px,h/2-mx*h*0.46); g.lineTo(px,h/2-mn*h*0.46+0.5);
+    }
+    g.stroke(); g.globalAlpha=1;
+  };
+  draw(last.waveA,"#3FB2BC"); draw(last.waveB,"#E0A63C");
+}
+function drawScore(){
+  const cv=$("cScore"), [g,w,h]=fitCanvas(cv);
+  g.clearRect(0,0,w,h);
+  const {scores}=last, th=parseFloat($("th").value);
+  const top=Math.max(th*1.6, Math.max(...scores)*1.1, 10);
+  const y=v=>h-6-(v/top)*(h-14);
+  // threshold + regions
+  const regs=regions(scores,th);
+  g.fillStyle="rgba(214,69,69,.22)";
+  for(const [s,e] of regs) g.fillRect(s/scores.length*w,0,Math.max(2,(e-s)/scores.length*w),h);
+  g.strokeStyle="#D64545"; g.setLineDash([5,4]); g.beginPath();
+  g.moveTo(0,y(th)); g.lineTo(w,y(th)); g.stroke(); g.setLineDash([]);
+  // curve
+  g.strokeStyle="#3FB2BC"; g.lineWidth=1.5; g.beginPath();
+  for(let i=0;i<scores.length;i++){
+    const px=i/(scores.length-1||1)*w;
+    i?g.lineTo(px,y(scores[i])):g.moveTo(px,y(scores[i]));
+  }
+  g.stroke();
+  g.font="10px 'IBM Plex Mono',monospace"; g.fillStyle="rgba(255,255,255,.55)";
+  g.fillText(th.toFixed(1)+" dB", w-52, y(th)-4);
+  return regs;
+}
+function regions(scores,th){
+  const out=[]; let s=-1;
+  for(let i=0;i<=scores.length;i++){
+    const over=i<scores.length && scores[i]>th;
+    if(over && s<0) s=i;
+    if(!over && s>=0){ if(i-s>=3) out.push([s,i]); s=-1; }
+  }
+  return out;
+}
+
+/* ---------- pipeline ---------- */
+function analyze(){
+  const xA=toMono(A.buf), xB0=toMono(B.buf), sr=A.buf.sampleRate;
+  let lag=0;
+  if($("align").checked) lag=bestLag(frameRMS(xA),frameRMS(xB0),sr);
+  const shift=lag*HOP;
+  let xB;
+  if(shift>0) xB=xB0.subarray(shift);
+  else if(shift<0){ xB=new Float32Array(xB0.length-shift); xB.set(xB0,-shift); }
+  else xB=xB0;
+
+  const sa=stft(xA), sb=stft(xB);
+  const frames=Math.min(sa.frames,sb.frames), bins=sa.bins;
+  const idx=bandIndex(bins,sr);
+  const bA=toBands(sa.S,frames,bins,idx), bB=toBands(sb.S,frames,bins,idx);
+  const scores=new Float32Array(frames);
+  const D=new Float32Array(frames*NBANDS);
+  let sum=0, mx=0, dotAB=0, nA=0, nB=0;
+  for(let f=0;f<frames;f++){
+    let s=0,c=0;
+    for(let b=0;b<NBANDS;b++){
+      const a=bA[f*NBANDS+b], bb=bB[f*NBANDS+b];
+      const pa=a-DB_FLOOR, pb=bb-DB_FLOOR;
+      dotAB+=pa*pb; nA+=pa*pa; nB+=pb*pb;
+      const d=Math.abs(a-bb);
+      D[f*NBANDS+b]=d;
+      if(a>SILENCE||bb>SILENCE){s+=d;c++;}
+    }
+    scores[f]=c?s/c:0;
+    sum+=scores[f]; if(scores[f]>mx)mx=scores[f];
+  }
+  last={specA:sa.S,specB:sb.S,D,frames,bins,sr,
+        waveA:xA,waveB:xB,scores,
+        mean:sum/frames,max:mx,corr:dotAB/Math.sqrt(nA*nB||1),
+        lagMs:shift/sr*1000};
+  render();
+}
+function render(){
+  if(!last)return;
+  $("viz").hidden=false; $("metrics").hidden=false; $("empty").hidden=true;
+  const {frames,bins}=last;
+  const regs=drawScore();
+  const th=parseFloat($("th").value);
+  drawWave();
+  drawSpec($("cSpecA"),last.specA,frames,bins,VIR,DB_FLOOR,-10);
+  drawSpec($("cSpecB"),last.specB,frames,bins,VIR,DB_FLOOR,-10);
+  drawSpec($("cDiff"),last.D,frames,NBANDS,HEAT,0,25,regs,true);
+  const rate=last.scores.filter(v=>v>th).length/frames;
+  $("mMean").textContent=last.mean.toFixed(2)+" dB";
+  $("mMax").textContent=last.max.toFixed(2)+" dB";
+  $("mCorr").textContent=last.corr.toFixed(4);
+  $("mRate").textContent=(rate*100).toFixed(1)+" %";
+  $("mLag").textContent=last.lagMs.toFixed(0)+" ms";
+  const t=f=>(f*HOP/last.sr).toFixed(2);
+  $("regions").innerHTML = regs.length
+    ? "異常区間: "+regs.map(([s,e])=>`<span class="r">${t(s)}–${t(e)}s</span>`).join("")
+    : "しきい値を超える連続区間はありません。";
+  const badge=$("badge");
+  const ng=regs.length>0 || rate>0.10;
+  badge.textContent=ng?"異常 NG":"正常 OK";
+  badge.className="badge "+(ng?"ng":"ok");
+}
+
+/* ---------- I/O ---------- */
+function setSlot(slot,ui){
+  $("name"+ui).textContent=slot.name;
+  $("meta"+ui).textContent=slot.buf.duration.toFixed(2)+"s / "+slot.buf.sampleRate+"Hz / "+slot.buf.numberOfChannels+"ch";
+  $("play"+ui).hidden=false;
+  if(ui==="A"&&refDb) $("regA").hidden=false;
+  $("run").disabled=!(A.buf&&B.buf);
+}
+async function loadFile(file,slot,ui){
+  try{
+    const ab=await file.arrayBuffer();
+    slot.buf=await ctx().decodeAudioData(ab);
+    slot.name=file.name;
+    if(ui==="A"){ curRefId=null; if(refDb)renderRefs(); }
+    setSlot(slot,ui);
+  }catch(e){ alert("読み込めませんでした: "+file.name+"\n対応形式: WAV / MP3 / M4A / OGG など"); }
+}
+function hookDrop(id,slot,ui){
+  const el=$("drop"+ui), input=$("file"+ui);
+  el.addEventListener("click",e=>{if(e.target.tagName!=="BUTTON")input.click();});
+  el.addEventListener("keydown",e=>{if(e.key==="Enter")input.click();});
+  input.addEventListener("change",()=>{if(input.files[0])loadFile(input.files[0],slot,ui);});
+  el.addEventListener("dragover",e=>{e.preventDefault();el.classList.add("over");});
+  el.addEventListener("dragleave",()=>el.classList.remove("over"));
+  el.addEventListener("drop",e=>{
+    e.preventDefault(); el.classList.remove("over");
+    if(e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0],slot,ui);
+  });
+}
+hookDrop("dropA",A,"A"); hookDrop("dropB",B,"B");
+
+let playing=null;
+function play(slot){
+  if(playing){try{playing.stop();}catch(e){} playing=null;}
+  if(!slot.buf)return;
+  const src=ctx().createBufferSource();
+  src.buffer=slot.buf; src.connect(ctx().destination); src.start();
+  playing=src;
+}
+$("playA").addEventListener("click",()=>play(A));
+$("playB").addEventListener("click",()=>play(B));
+
+/* ---------- mic recording (raw PCM, no echo-cancel/AGC so the measurement stays true) ---------- */
+let rec=null; // {slot,ui,stream,src,node,mute,chunks,len,start,timer}
+async function startRec(slot,ui){
+  if(rec){stopRec();return;}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    alert("この環境ではマイクを使用できません。録音済みファイルの読み込みをご利用ください。");return;
+  }
+  let stream;
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({audio:{
+      echoCancellation:false, noiseSuppression:false, autoGainControl:false}});
+  }catch(e){
+    alert("マイクにアクセスできませんでした。ブラウザのマイク許可を確認してください。\n("+e.name+")");return;
+  }
+  const c=ctx(); await c.resume();
+  if(playing){try{playing.stop();}catch(e){} playing=null;}
+  const src=c.createMediaStreamSource(stream);
+  const node=c.createScriptProcessor(4096,1,1);
+  const mute=c.createGain(); mute.gain.value=0;
+  rec={slot,ui,stream,src,node,mute,chunks:[],len:0,start:performance.now()};
+  node.onaudioprocess=e=>{
+    if(!rec)return;
+    const d=e.inputBuffer.getChannelData(0);
+    rec.chunks.push(new Float32Array(d)); rec.len+=d.length;
+    let s=0;for(let i=0;i<d.length;i+=8)s=Math.max(s,Math.abs(d[i]));
+    $("lvl"+ui).style.width=Math.min(100,s*130)+"%";
+    if(rec.len>=MAX_SEC*c.sampleRate) stopRec();
+  };
+  src.connect(node); node.connect(mute); mute.connect(c.destination);
+  $("mic"+ui).textContent="■ 停止 0.0s"; $("mic"+ui).classList.add("rec");
+  $("drop"+ui).classList.add("recording");
+  $("lvlBox"+ui).hidden=false;
+  $("name"+ui).textContent="録音中…（もう一度押すと停止、最長"+MAX_SEC+"秒）";
+  rec.timer=setInterval(()=>{ if(rec)$("mic"+ui).textContent="■ 停止 "+((performance.now()-rec.start)/1000).toFixed(1)+"s"; },100);
+}
+function stopRec(){
+  if(!rec)return;
+  const r=rec; rec=null;
+  clearInterval(r.timer);
+  try{r.src.disconnect();r.node.disconnect();r.mute.disconnect();}catch(e){}
+  r.node.onaudioprocess=null;
+  r.stream.getTracks().forEach(t=>t.stop());
+  $("mic"+r.ui).textContent="● マイクで録音"; $("mic"+r.ui).classList.remove("rec");
+  $("drop"+r.ui).classList.remove("recording");
+  $("lvlBox"+r.ui).hidden=true;
+  const c=ctx();
+  if(r.len<c.sampleRate*0.3){ // under 0.3s: treat as a misfire
+    $("name"+r.ui).textContent=r.slot.buf?r.slot.name:"クリックまたはドラッグ＆ドロップで読み込み";
+    return;
+  }
+  const buf=c.createBuffer(1,r.len,c.sampleRate), d=buf.getChannelData(0);
+  let o=0; for(const ch of r.chunks){d.set(ch,o);o+=ch.length;}
+  r.slot.buf=buf;
+  const now=new Date();
+  r.slot.name="マイク録音 "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0")+":"+String(now.getSeconds()).padStart(2,"0");
+  if(r.ui==="A"){ curRefId=null; if(refDb)renderRefs(); }
+  setSlot(r.slot,r.ui);
+  if(A.buf&&B.buf){ $("badge").textContent="解析中…"; $("badge").className="badge"; setTimeout(analyze,30); }
+}
+$("micA").addEventListener("click",()=>startRec(A,"A"));
+$("micB").addEventListener("click",()=>startRec(B,"B"));
+
+/* ---------- reference (OK-sound) library, stored in this browser via IndexedDB ---------- */
+let refDb=null, curRefId=null, armDelId=null;
+function openRefDb(){
+  return new Promise(res=>{
+    let r;
+    try{ r=indexedDB.open("otokurabe",1); }catch(e){ res(null); return; }
+    r.onupgradeneeded=()=>{ r.result.createObjectStore("refs",{keyPath:"id",autoIncrement:true}); };
+    r.onsuccess=()=>res(r.result);
+    r.onerror=()=>res(null);
+    r.onblocked=()=>res(null);
+  });
+}
+function refStore(mode){ return refDb.transaction("refs",mode).objectStore("refs"); }
+function refAll(){ return new Promise(res=>{ try{const q=refStore("readonly").getAll();
+  q.onsuccess=()=>res(q.result||[]); q.onerror=()=>res([]);}catch(e){res([]);} }); }
+function refPut(rec){ return new Promise(res=>{ try{const q=refStore("readwrite").add(rec);
+  q.onsuccess=()=>res(q.result); q.onerror=()=>res(null);}catch(e){res(null);} }); }
+function refDel(id){ return new Promise(res=>{ try{const q=refStore("readwrite").delete(id);
+  q.onsuccess=()=>res(true); q.onerror=()=>res(false);}catch(e){res(false);} }); }
+
+function monoTrim(buf){ // full mix-down, capped to the analysis window
+  const n=Math.min(buf.length, Math.floor(MAX_SEC*buf.sampleRate));
+  const out=new Float32Array(n), g=1/buf.numberOfChannels;
+  for(let c=0;c<buf.numberOfChannels;c++){
+    const d=buf.getChannelData(c);
+    for(let i=0;i<n;i++) out[i]+=d[i]*g;
+  }
+  return out;
+}
+function toWav(buf){
+  const x=monoTrim(buf), n=x.length, sr=Math.round(buf.sampleRate);
+  const b=new ArrayBuffer(44+n*2), v=new DataView(b);
+  const ws=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  ws(0,"RIFF"); v.setUint32(4,36+n*2,true); ws(8,"WAVE");
+  ws(12,"fmt "); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+  v.setUint32(24,sr,true); v.setUint32(28,sr*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true);
+  ws(36,"data"); v.setUint32(40,n*2,true);
+  for(let i=0;i<n;i++){ const s=Math.max(-1,Math.min(1,x[i])); v.setInt16(44+i*2, s<0?s*0x8000:s*0x7FFF, true); }
+  return new Blob([b],{type:"audio/wav"});
+}
+function fmtDate(t){ const d=new Date(t);
+  return d.getFullYear()+"/"+(d.getMonth()+1)+"/"+d.getDate()+" "
+    +d.getHours()+":"+String(d.getMinutes()).padStart(2,"0"); }
+
+async function renderRefs(){
+  if(!refDb) return;
+  const rows=$("refRows"), items=(await refAll()).sort((a,b)=>b.date-a.date);
+  rows.innerHTML="";
+  $("refHint").hidden=items.length>0;
+  for(const it of items){
+    const div=document.createElement("div");
+    div.className="refrow"+(it.id===curRefId?" sel":"");
+    const del=it.id===armDelId;
+    div.innerHTML=
+      '<span class="rname"></span><span class="rmeta">'+it.dur.toFixed(1)+'s ・ '+fmtDate(it.date)+'</span>'+
+      '<span class="rbtns"><button class="use">'+(it.id===curRefId?'使用中':'選択')+'</button>'+
+      '<button class="del'+(del?' arm':'')+'">'+(del?'本当に削除？':'削除')+'</button></span>';
+    div.querySelector(".rname").textContent=it.name;
+    div.querySelector(".use").addEventListener("click",()=>useRef(it));
+    div.querySelector(".del").addEventListener("click",async()=>{
+      if(armDelId===it.id){ await refDel(it.id); if(curRefId===it.id)curRefId=null; armDelId=null; }
+      else armDelId=it.id;
+      renderRefs();
+    });
+    rows.appendChild(div);
+  }
+}
+async function useRef(it){
+  try{
+    const ab=await it.blob.arrayBuffer();
+    A.buf=await ctx().decodeAudioData(ab);
+    A.name=it.name+"（正常品リスト）";
+    curRefId=it.id; armDelId=null;
+    setSlot(A,"A"); renderRefs();
+    if(A.buf&&B.buf){ $("badge").textContent="解析中…"; $("badge").className="badge"; setTimeout(analyze,30); }
+  }catch(e){ alert("読み込みに失敗しました。"); }
+}
+$("regA").addEventListener("click",async()=>{
+  if(!A.buf||!refDb) return;
+  const rec={name:A.name.replace(/（内部生成.*?）|（正常品リスト）/g,"").trim()||"正常品",
+    date:Date.now(), dur:Math.min(A.buf.duration,MAX_SEC), sr:A.buf.sampleRate, blob:toWav(A.buf)};
+  const id=await refPut(rec);
+  if(id===null){ alert("保存に失敗しました。"); return; }
+  curRefId=id; renderRefs();
+});
+openRefDb().then(db=>{
+  refDb=db;
+  if(!db){ $("refPanel").hidden=true; return; }
+  renderRefs();
+});
+
+$("run").addEventListener("click",()=>{ $("badge").textContent="解析中…"; $("badge").className="badge";
+  setTimeout(analyze,30); });
+$("th").addEventListener("input",()=>{ $("thval").textContent=parseFloat($("th").value).toFixed(1)+" dB"; if(last)render(); });
+$("align").addEventListener("change",()=>{ if(A.buf&&B.buf)analyze(); });
+window.addEventListener("resize",()=>{ if(last)render(); });
+
+/* ---------- demo signals: motor-like hum, B gets a rattle burst ---------- */
+function demoBuffer(withFault){
+  const sr=ctx().sampleRate, n=Math.floor(sr*3), buf=ctx().createBuffer(1,n,sr), d=buf.getChannelData(0);
+  let lp=0;
+  for(let i=0;i<n;i++){
+    const t=i/sr;
+    let v=0.32*Math.sin(2*Math.PI*118*t)+0.16*Math.sin(2*Math.PI*236*t+.5)
+         +0.08*Math.sin(2*Math.PI*472*t+1.1)+0.04*Math.sin(2*Math.PI*940*t);
+    lp=lp*0.96+(Math.random()*2-1)*0.04; v+=lp*0.5;
+    if(withFault && t>1.2 && t<1.75){
+      const env=Math.sin(Math.PI*(t-1.2)/0.55);
+      v+=env*0.25*Math.sin(2*Math.PI*4700*t)*(0.6+0.4*Math.sin(2*Math.PI*90*t));
+      v+=env*(Math.random()*2-1)*0.12;
+    }
+    const fade=Math.min(1,t/0.05,(3-t)/0.05);
+    d[i]=v*0.8*fade;
+  }
+  return buf;
+}
+$("demo").addEventListener("click",()=>{
+  curRefId=null; if(refDb)renderRefs();
+  A.buf=demoBuffer(false); A.name="デモ_正常音.wav（内部生成）"; setSlot(A,"A");
+  B.buf=demoBuffer(true);  B.name="デモ_異常音.wav（内部生成・4.7kHz付近にビビリ音）"; setSlot(B,"B");
+  analyze();
+});
+</script>

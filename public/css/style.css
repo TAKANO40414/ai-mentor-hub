@@ -572,6 +572,15 @@ button:hover { background: var(--primary-dark); }
 .danger-btn { background: var(--pink); }
 .danger-btn:hover { background: var(--pink-dark); }
 
+.kenpin-frame {
+  width: 100%;
+  height: calc(100vh - 240px);
+  min-height: 480px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #f4f7f7;
+}
+
 .ai-mode-switch {
   display: inline-flex;
   border: 1px solid var(--border);

@@ -864,6 +864,14 @@ async function loadThread() {
   scrollChatToBottom();
 }
 
+/* ---------- 音くらべ検品 (self-contained page, loaded on first open) ---------- */
+function initKenpin() {
+  document.querySelector('.tab-btn[data-tab="kenpin"]').addEventListener('click', () => {
+    const frame = document.getElementById('kenpin-frame');
+    if (!frame.src) frame.src = frame.dataset.src;
+  });
+}
+
 /* ---------- AI hub: chat (all users) + summary (boss only), chosen after entering ---------- */
 function initAiHub() {
   if (currentUser.role === 'boss') {
@@ -1079,6 +1087,7 @@ async function init() {
   initSchedule();
   initManual();
   initChat();
+  initKenpin();
   initAiHub();
   initAiChat();
   initAiSummary();
