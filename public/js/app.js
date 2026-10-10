@@ -777,12 +777,35 @@ function renderManualList() {
 }
 
 /* マニュアル → 技術伝承（球体）：AIで手順に分けてから、確認して点として入れる */
-async function openManualToSphereModal(item) {
+function openManualToSphereModal(item) {
+  openSphereImportModal({
+    title: item.title,
+    load: () => api(`/api/ai/manual-to-sphere/${item.id}`, { method: 'POST' }),
+    fallback: item.description
+      ? { title: item.title, process: item.category, summary: '', steps: [{ title: item.title.slice(0, 40), body: item.description, tag: '目線', caution: '' }], tips: [], questions: [] }
+      : null
+  });
+}
+
+/* AI要約（Markdown）→ 技術伝承（球体） */
+function openSummaryToSphereModal(markdown) {
+  const heading = (markdown.match(/^#\s*(.+)$/m) || [])[1];
+  const title = (heading || 'AI要約').trim().slice(0, 40);
+  const plain = markdown.replace(/```[\s\S]*?```/g, '').replace(/^#+\s*/gm, '').replace(/\*\*/g, '').trim();
+  openSphereImportModal({
+    title,
+    load: () => api('/api/ai/manual-from-voice', { method: 'POST', body: JSON.stringify({ transcript: markdown, hint: title }) }),
+    fallback: { title, process: 'AI要約', summary: '', steps: [{ title, body: plain, tag: '目線', caution: '' }], tips: [], questions: [] }
+  });
+}
+
+/* 共通：AIで手順に分ける → 確認 → 球体の IndexedDB に入れる */
+async function openSphereImportModal({ title, load, fallback }) {
   let manual = null;
   openModal(
     '技術伝承に入れる',
     (body) => {
-      body.innerHTML = `<p class="modal-meta"><strong>${escapeHtml(item.title)}</strong></p><p id="m2s-status" class="empty-msg">AIがマニュアルを手順（点）に分けています…</p><div id="m2s-preview" class="ai-result hidden"></div>`;
+      body.innerHTML = `<p class="modal-meta"><strong>${escapeHtml(title)}</strong></p><p id="m2s-status" class="empty-msg">AIが内容を手順（点）に分けています…</p><div id="m2s-preview" class="ai-result hidden"></div>`;
     },
     (actions) => {
       actions.appendChild(makeButton('やめる', 'ghost-btn', closeModal));
@@ -820,15 +843,12 @@ async function openManualToSphereModal(item) {
   };
 
   try {
-    const { manual: m } = await api(`/api/ai/manual-to-sphere/${item.id}`, { method: 'POST' });
+    const { manual: m } = await load();
     showPreview(m);
   } catch (err) {
-    if (item.description) {
-      // AIが使えないときは、マニュアル全体を1つの点として入れる
-      showPreview(
-        { title: item.title, process: item.category, summary: '', steps: [{ title: item.title.slice(0, 40), body: item.description, tag: '目線', caution: '' }], tips: [], questions: [] },
-        `AIで手順に分けられませんでした（${err.message}）。代わりに、マニュアル全体を1つの点として入れます。`
-      );
+    if (fallback) {
+      // AIが使えないときは、内容全体を1つの点として入れる
+      showPreview(fallback, `AIで手順に分けられませんでした（${err.message}）。代わりに、内容全体を1つの点として入れます。`);
     } else {
       statusEl.textContent = `手順に分けられませんでした：${err.message}`;
     }
@@ -1234,6 +1254,11 @@ function initAiSummary() {
   document.getElementById('ai-copy-btn').addEventListener('click', () => {
     const raw = document.getElementById('ai-result').dataset.raw || '';
     navigator.clipboard.writeText(raw);
+  });
+
+  document.getElementById('ai-to-sphere-btn').addEventListener('click', () => {
+    const raw = document.getElementById('ai-result').dataset.raw || '';
+    if (raw.trim()) openSummaryToSphereModal(raw);
   });
 }
 
