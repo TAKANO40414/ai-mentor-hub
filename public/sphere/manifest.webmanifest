@@ -1,0 +1,13 @@
+{
+  "name": "球体を回す ― 技術伝承の暗黙知",
+  "short_name": "球体を回す",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef0f3",
+  "theme_color": "#eef0f3",
+  "lang": "ja",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

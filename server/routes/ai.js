@@ -171,6 +171,91 @@ router.post('/summarize-pdf', requireBoss, (req, res) => {
   });
 });
 
+// 音声（文字起こし）からマニュアルを作成
+const VOICE_MANUAL_SYSTEM_PROMPT = `あなたは製造現場の技術伝承を手伝う編集者です。ベテランが口頭で語った作業の文字起こし（話し言葉、言い直し、脱線を含む）を、若手がそのまま現場で使えるマニュアルに整理します。
+
+必ず次のJSONだけを出力してください（コードフェンスや説明文は不要）:
+{
+  "title": "マニュアルの題名（作業名が分かるように、30文字以内）",
+  "process": "この作業が属する工程名（10文字以内。例：段取り、刷り出し、検査）",
+  "summary": "この作業の目的と全体像を2〜3文で",
+  "steps": [
+    {
+      "title": "手順の名前（コツが分かる短い一文、25文字以内）",
+      "body": "具体的なやり方。何を・どこを・どう見るか／触るか／聞くか。判断の基準や理由も。語りにある言葉をなるべく残す。",
+      "tag": "手元 | 目線 | 機械 のいずれか（手で行う作業＝手元、目で確認する＝目線、機械の操作や設定＝機械）",
+      "caution": "注意点・失敗例があれば（無ければ空文字）"
+    }
+  ],
+  "tips": ["手順に収まらないコツ・勘所・判断の分かれ目（0〜5個）"],
+  "questions": ["文字起こしだけでは分からず、ベテランに確認すべき点（0〜3個）"]
+}
+
+ルール:
+- 手順は実際の作業順に並べる。文字起こしに無いことは作らない。曖昧な点は questions に回す。
+- 話し言葉を書き言葉に直すが、現場の固有の言い回し（「ペタペタ」など）はそのまま残す。
+- 数値・時間・位置など具体的な表現を優先する。`;
+
+function extractJson(text) {
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start < 0 || end <= start) throw new Error('AIの出力を読み取れませんでした。もう一度お試しください。');
+  return JSON.parse(text.slice(start, end + 1));
+}
+
+router.post('/manual-from-voice', requireAuth, async (req, res) => {
+  const { transcript, hint } = req.body || {};
+  const text = String(transcript || '').trim();
+  if (!text) return res.status(400).json({ error: '文字起こしの内容が空です。' });
+  if (text.length > MAX_TEXT_LENGTH) {
+    return res.status(400).json({ error: `文字起こしが長すぎます（${MAX_TEXT_LENGTH}文字以内にしてください）。` });
+  }
+  const userContent =
+    (hint ? `作業名・技術名のヒント：${String(hint).slice(0, 200)}\n\n` : '') + `=== 文字起こし ===\n${text}`;
+  try {
+    const raw = await callClaude([{ role: 'user', content: userContent }], VOICE_MANUAL_SYSTEM_PROMPT, 8192);
+    const manual = extractJson(raw);
+    if (!Array.isArray(manual.steps) || !manual.steps.length) {
+      return res.status(502).json({ error: '手順を抽出できませんでした。文字起こしの内容を確認してください。' });
+    }
+    manual.steps = manual.steps.map((st) => ({
+      title: String(st.title || '').trim() || '（無題）',
+      body: String(st.body || '').trim(),
+      tag: ['手元', '目線', '機械'].includes(st.tag) ? st.tag : '手元',
+      caution: String(st.caution || '').trim()
+    }));
+    manual.tips = Array.isArray(manual.tips) ? manual.tips.map(String) : [];
+    manual.questions = Array.isArray(manual.questions) ? manual.questions.map(String) : [];
+    manual.title = String(manual.title || hint || '音声マニュアル').trim();
+    manual.process = String(manual.process || '').trim();
+    manual.summary = String(manual.summary || '').trim();
+    res.json({ manual, model: MODEL });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+// 技術伝承「球体を回す」タブ（public/sphere/）からのAI呼び出し
+router.post('/sphere', requireAuth, async (req, res) => {
+  const { system, messages, maxTokens } = req.body || {};
+  if (!Array.isArray(messages) || !messages.length) {
+    return res.status(400).json({ error: 'メッセージが空です。' });
+  }
+  const safeMessages = messages
+    .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+    .map((m) => ({ role: m.role, content: m.content.slice(0, MAX_TEXT_LENGTH) }));
+  if (!safeMessages.length || safeMessages[0].role !== 'user') {
+    return res.status(400).json({ error: 'メッセージの形式が不正です。' });
+  }
+  const tokens = Math.min(Math.max(parseInt(maxTokens, 10) || 2048, 256), 8192);
+  try {
+    const text = await callClaude(safeMessages, String(system || '').slice(0, MAX_TEXT_LENGTH), tokens);
+    res.json({ text, model: MODEL });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
 router.get('/chat-models', requireAuth, async (req, res) => {
   const ollamaModels = await listOllamaModels();
   res.json({ models: [...CHAT_MODELS, ...ollamaModels], default: MODEL });

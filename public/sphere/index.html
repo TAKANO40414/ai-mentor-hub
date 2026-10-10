@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#eef0f3">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="球体を回す">
+<title>球体を回す</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <button class="tech-name" id="techName" title="技術名を変更">［技術名］</button>
+  <div class="topbar-right">
+    <div class="role-switch" id="roleSwitch" role="group" aria-label="立場">
+      <button data-role="young" class="active">若手</button>
+      <button data-role="veteran">ベテラン</button>
+    </div>
+    <button class="icon-btn" id="openSettings" aria-label="設定">⚙</button>
+  </div>
+</header>
+
+<main id="screens">
+
+  <!-- ===== 球体 ===== -->
+  <section class="screen active" id="screen-sphere">
+    <div class="sphere-wrap">
+      <canvas id="sphere"></canvas>
+      <div class="sphere-empty" id="sphereEmpty" hidden>
+        <p>まだ点がありません。</p>
+        <p class="muted">「記録」でコツを残すか、設定からサンプルを読み込んでください。</p>
+      </div>
+      <div class="sphere-stats" id="sphereStats"></div>
+    </div>
+    <p class="sphere-caption">
+      <strong>指で回して、裏側を見る</strong><br>
+      <span class="muted">破線 ＝ まだ見えていない部分</span>
+    </p>
+    <div class="legend">
+      <span><i class="lg lg-seen"></i>見えている</span>
+      <span><i class="lg lg-told"></i>言われて気づいた</span>
+      <span><i class="lg lg-hidden"></i>まだ見えていない</span>
+      <span><i class="lg lg-line"></i>線＝手順　円＝工程</span>
+    </div>
+    <div class="stage-row" id="stageRow"></div>
+  </section>
+
+  <!-- ===== 記録する ===== -->
+  <section class="screen" id="screen-record">
+    <h2 class="sec-title"><span class="num">①</span> 記録する</h2>
+    <p class="lead">一人称カメラの動画と音声メモを、視点タグを付けて残す。</p>
+
+    <form id="recordForm" autocomplete="off">
+      <div class="field">
+        <label>視点タグ</label>
+        <div class="chip-row" id="tagChips">
+          <button type="button" class="chip active" data-tag="手元">手元</button>
+          <button type="button" class="chip" data-tag="目線">目線</button>
+          <button type="button" class="chip" data-tag="機械">機械</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="recTitle">コツ（点）の名前</label>
+        <input id="recTitle" type="text" placeholder="例：インキの硬さは指先で確かめる" required>
+      </div>
+
+      <div class="field">
+        <label for="recCircle">工程（円）</label>
+        <select id="recCircle"></select>
+      </div>
+
+      <div class="field">
+        <label>視点カード <span class="muted" id="recPerspective">なし</span></label>
+      </div>
+
+      <div class="field">
+        <label>一人称カメラ</label>
+        <div class="media-row">
+          <label class="btn btn-outline file-btn">
+            🎥 動画を撮る
+            <input type="file" id="recVideo" accept="video/*" capture="environment" hidden>
+          </label>
+          <label class="btn btn-outline file-btn">
+            📷 写真
+            <input type="file" id="recPhoto" accept="image/*" capture="environment" hidden>
+          </label>
+        </div>
+        <div id="recMediaPreview" class="media-preview"></div>
+      </div>
+
+      <div class="field">
+        <label>音声メモ・語り</label>
+        <div class="media-row">
+          <button type="button" class="btn btn-outline" id="recAudioBtn">🎙 録音開始</button>
+          <button type="button" class="btn btn-outline" id="recSpeechBtn">📝 文字起こし</button>
+          <span class="rec-timer" id="recTimer"></span>
+        </div>
+        <div id="recAudioPreview" class="media-preview"></div>
+      </div>
+
+      <div class="field">
+        <label for="recBody">語った内容・メモ</label>
+        <textarea id="recBody" rows="5" placeholder="ベテランの語り、気づいたこと、判断の理由など"></textarea>
+      </div>
+
+      <div class="field">
+        <label>この点はいま、どう見えている？</label>
+        <div class="chip-row" id="stateChips">
+          <button type="button" class="chip active" data-state="seen">見えている</button>
+          <button type="button" class="chip" data-state="told">言われて気づいた</button>
+          <button type="button" class="chip" data-state="hidden">まだ見えていない</button>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">点として残す</button>
+        <button type="button" class="btn btn-ghost" id="recClear">クリア</button>
+      </div>
+    </form>
+
+    <h3 class="sub-title">最近の記録</h3>
+    <ul class="point-list" id="recentList"></ul>
+  </section>
+
+  <!-- ===== 引き出す ===== -->
+  <section class="screen" id="screen-draw">
+    <h2 class="sec-title"><span class="num">②</span> 引き出す</h2>
+    <p class="lead">視点カードを順に出し、別の方向から語ってもらう。</p>
+
+    <div class="card-stage">
+      <div class="pcard" id="pcard">
+        <div class="pcard-label" id="pcardLabel">材料から</div>
+        <div class="pcard-q" id="pcardQ"></div>
+        <div class="pcard-hint muted" id="pcardHint"></div>
+      </div>
+      <div class="pcard-nav">
+        <button class="btn btn-ghost" id="cardPrev">← 前</button>
+        <span class="muted" id="cardCount"></span>
+        <button class="btn btn-ghost" id="cardNext">次 →</button>
+      </div>
+    </div>
+
+    <div class="form-actions stack">
+      <button class="btn btn-primary" id="cardRecord">この視点で記録する</button>
+      <button class="btn btn-outline" id="cardAI">AIに深掘り質問を作ってもらう</button>
+    </div>
+    <div class="ai-box" id="cardAIOut" hidden></div>
+
+    <h3 class="sub-title">語りの進み具合</h3>
+    <ul class="coverage" id="coverage"></ul>
+  </section>
+
+  <!-- ===== 整理する ===== -->
+  <section class="screen" id="screen-organize">
+    <h2 class="sec-title"><span class="num">③</span> 整理する</h2>
+    <p class="lead">点（コツ）・線（手順）・円（工程）・球（関係）の構造でつなぐ。</p>
+
+    <div class="org-toolbar">
+      <button class="btn btn-outline" id="addCircle">＋ 工程（円）を追加</button>
+      <button class="btn btn-outline" id="addLink">＋ 関係（球）をつなぐ</button>
+    </div>
+
+    <div id="circleList"></div>
+
+    <h3 class="sub-title">関係（球）― 工程をまたぐつながり</h3>
+    <ul class="link-list" id="linkList"></ul>
+  </section>
+
+  <!-- ===== 探す ===== -->
+  <section class="screen" id="screen-search">
+    <h2 class="sec-title"><span class="num">④</span> 探す</h2>
+    <p class="lead">「この症状のとき、ベテランはどこを見る？」と聞ける。語りの記録から答える。</p>
+
+    <div class="chat" id="chat"></div>
+    <div class="suggest-row" id="suggestRow"></div>
+    <form class="chat-input" id="chatForm">
+      <input type="text" id="chatText" placeholder="例：色がくすむとき、どこを見る？" required>
+      <button type="submit" class="btn btn-primary">聞く</button>
+    </form>
+    <p class="muted small" id="chatMode"></p>
+  </section>
+
+</main>
+
+<nav class="tabbar">
+  <button class="tab active" data-screen="sphere"><span class="tab-ic">◎</span>球体</button>
+  <button class="tab" data-screen="record"><span class="tab-ic">①</span>記録</button>
+  <button class="tab" data-screen="draw"><span class="tab-ic">②</span>引き出す</button>
+  <button class="tab" data-screen="organize"><span class="tab-ic">③</span>整理</button>
+  <button class="tab" data-screen="search"><span class="tab-ic">④</span>探す</button>
+</nav>
+
+<!-- 点の詳細 -->
+<div class="sheet" id="pointSheet" hidden>
+  <div class="sheet-backdrop" data-close></div>
+  <div class="sheet-body">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <span class="tag" id="psTag"></span>
+      <span class="muted small" id="psCircle"></span>
+    </div>
+    <h3 id="psTitle"></h3>
+    <div class="media-preview" id="psMedia"></div>
+    <p id="psBody" class="ps-body"></p>
+    <div class="field">
+      <label>見え方</label>
+      <div class="chip-row" id="psState">
+        <button type="button" class="chip" data-state="seen">見えている</button>
+        <button type="button" class="chip" data-state="told">言われて気づいた</button>
+        <button type="button" class="chip" data-state="hidden">まだ見えていない</button>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-outline" id="psEdit">編集</button>
+      <button class="btn btn-danger" id="psDelete">削除</button>
+      <button class="btn btn-ghost" data-close>閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 設定 -->
+<div class="sheet" id="settingsSheet" hidden>
+  <div class="sheet-backdrop" data-close></div>
+  <div class="sheet-body">
+    <div class="sheet-handle"></div>
+    <h3>設定</h3>
+    <div class="field">
+      <label for="setTech">技術名</label>
+      <input id="setTech" type="text" placeholder="例：オフセット印刷の色合わせ">
+    </div>
+    <div class="field">
+      <label for="setKey">Claude APIキー（AI機能に使用。端末内にのみ保存）</label>
+      <input id="setKey" type="password" placeholder="sk-ant-...">
+      <p class="muted small">未設定でも、「引き出す」の固定カードと「探す」のキーワード検索は使えます。</p>
+    </div>
+    <div class="form-actions stack">
+      <button class="btn btn-primary" id="setSave">保存</button>
+      <button class="btn btn-outline" id="setSample">サンプルデータを読み込む</button>
+      <button class="btn btn-outline" id="setExport">書き出し（JSON）</button>
+      <label class="btn btn-outline file-btn">読み込み（JSON）<input type="file" id="setImport" accept="application/json" hidden></label>
+      <button class="btn btn-danger" id="setClear">すべて削除</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="db.js"></script>
+<script src="ai.js"></script>
+<script src="sphere.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

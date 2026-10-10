@@ -580,6 +580,18 @@ button:hover { background: var(--primary-dark); }
   border-radius: var(--radius);
   background: #f4f7f7;
 }
+.sphere-frame { background: #eef0f3; }
+
+/* 音声からマニュアル */
+.voice-controls { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+.voice-rec-btn.recording { background: var(--pink); animation: voice-pulse 1.2s infinite; }
+@keyframes voice-pulse { 50% { opacity: 0.6; } }
+.voice-timer { font-variant-numeric: tabular-nums; color: var(--pink-dark); font-size: 0.9rem; }
+.voice-file-btn { cursor: pointer; }
+#voice-transcript { width: 100%; box-sizing: border-box; line-height: 1.6; }
+.voice-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.6rem; }
+.ai-result .voice-step-tag { display: inline-block; font-size: 0.75rem; padding: 0.1rem 0.5rem; border-radius: 999px; background: #f6e3de; color: #c44a2f; margin-right: 0.4rem; }
+.ai-result .voice-caution { color: var(--pink-dark); }
 
 .ai-mode-switch {
   display: inline-flex;

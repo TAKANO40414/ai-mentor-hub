@@ -82,6 +82,7 @@
       <div class="ai-mode-switch">
         <button type="button" class="ai-mode-btn active" data-mode="chat">🗨️ AIチャット</button>
         <button type="button" class="ai-mode-btn hidden" data-mode="summary">🧠 AI要約</button>
+        <button type="button" class="ai-mode-btn" data-mode="voice">🎙 音声からマニュアル</button>
       </div>
 
       <div id="ai-mode-chat" class="ai-mode-panel">
@@ -122,6 +123,40 @@
             <h3>変換結果</h3>
             <div id="ai-result" class="ai-result"></div>
             <button type="button" id="ai-copy-btn" class="ghost-btn small-btn">結果をコピー</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="ai-mode-voice" class="ai-mode-panel hidden">
+        <div class="card">
+          <h2>音声からマニュアル作成</h2>
+          <p class="empty-msg">ベテランの語りを録音しながら文字に起こし、Claude（AI）が手順ごとのマニュアルに整理します。できたマニュアルは「技術伝承」タブの球体に点（コツ）として入れられます。</p>
+
+          <h3>1. 録音して文字起こし</h3>
+          <div class="voice-controls">
+            <button type="button" id="voice-rec-btn" class="voice-rec-btn">🎙 録音開始</button>
+            <span id="voice-timer" class="voice-timer"></span>
+            <label class="voice-file-btn ghost-btn small-btn">📄 テキストを読み込む<input type="file" id="voice-text-file" accept=".txt,text/plain" hidden /></label>
+          </div>
+          <p id="voice-support" class="empty-msg"></p>
+          <textarea id="voice-transcript" placeholder="録音すると、ここに文字起こしが入ります。話し言葉のままで構いません。手で直したり、別の文字起こしを貼り付けてもOKです。" rows="8"></textarea>
+
+          <h3>2. マニュアルを作成</h3>
+          <form id="voice-manual-form" class="grid-form">
+            <input type="text" id="voice-hint" placeholder="作業名・技術名（任意。例：オフセット印刷の色合わせ）" style="grid-column: 1 / -1;" />
+            <button type="submit">AIでマニュアルを作成</button>
+          </form>
+          <p id="voice-status" class="empty-msg"></p>
+
+          <div id="voice-result-wrap" class="hidden">
+            <h3>3. できたマニュアル</h3>
+            <div id="voice-result" class="ai-result"></div>
+            <div class="voice-actions">
+              <button type="button" id="voice-to-sphere-btn">◎ 技術伝承に入れる</button>
+              <button type="button" id="voice-to-manual-btn" class="hidden">📘 マニュアルに登録（技術要点）</button>
+              <button type="button" id="voice-copy-btn" class="ghost-btn small-btn">結果をコピー</button>
+            </div>
+            <p id="voice-action-status" class="empty-msg"></p>
           </div>
         </div>
       </div>
@@ -230,6 +265,11 @@
     <section id="tab-kenpin" class="tab-panel">
       <iframe id="kenpin-frame" class="kenpin-frame" title="音くらべ検品" data-src="otokurabe.html" allow="microphone"></iframe>
     </section>
+
+    <!-- 球体を回す (技術伝承の暗黙知アプリ, public/sphere/) -->
+    <section id="tab-sphere" class="tab-panel">
+      <iframe id="sphere-frame" class="kenpin-frame sphere-frame" title="球体を回す" data-src="sphere/index.html" allow="camera; microphone"></iframe>
+    </section>
   </main>
 
   <nav class="tabs">
@@ -296,6 +336,20 @@
         <path d="m28.5 30 2 2 3.5-4" stroke="#d64545" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
       </svg>
       <span class="tab-label">音声検品</span>
+    </button>
+    <button class="tab-btn" data-tab="sphere">
+      <svg class="tab-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="20" cy="22" r="13" fill="#fff" stroke="#c9ced5" stroke-width="1.5"/>
+        <ellipse cx="20" cy="22" rx="13" ry="5" stroke="#1f2a3a" stroke-width="2"/>
+        <ellipse cx="20" cy="22" rx="5" ry="13" stroke="#1f2a3a" stroke-width="2"/>
+        <ellipse cx="20" cy="22" rx="13" ry="5" transform="rotate(50 20 22)" stroke="#9aa3ad" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <path d="M6 12a16 16 0 0 1 28 0" stroke="#c44a2f" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M32 8l3 5-6 1z" fill="#c44a2f"/>
+        <circle cx="20" cy="9" r="2.2" fill="#c44a2f"/>
+        <circle cx="33" cy="22" r="2.2" fill="#c44a2f"/>
+        <circle cx="7" cy="22" r="2.2" fill="#fff" stroke="#c44a2f" stroke-width="1.5"/>
+      </svg>
+      <span class="tab-label">技術伝承</span>
     </button>
   </nav>
 

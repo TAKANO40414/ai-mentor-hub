@@ -872,6 +872,14 @@ function initKenpin() {
   });
 }
 
+/* ---------- 球体を回す (技術伝承の暗黙知アプリ, loaded on first open) ---------- */
+function initSphere() {
+  document.querySelector('.tab-btn[data-tab="sphere"]').addEventListener('click', () => {
+    const frame = document.getElementById('sphere-frame');
+    if (!frame.src) frame.src = frame.dataset.src;
+  });
+}
+
 /* ---------- AI hub: chat (all users) + summary (boss only), chosen after entering ---------- */
 function initAiHub() {
   if (currentUser.role === 'boss') {
@@ -885,6 +893,253 @@ function initAiHub() {
       document.getElementById(`ai-mode-${btn.dataset.mode}`).classList.remove('hidden');
     });
   });
+}
+
+/* ---------- 音声からマニュアル作成 → 技術伝承（球体）へ ---------- */
+let voiceManual = null;
+let voiceRecognition = null;
+let voiceTimerId = null;
+
+function initAiVoiceManual() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const recBtn = document.getElementById('voice-rec-btn');
+  const transcriptEl = document.getElementById('voice-transcript');
+  const timerEl = document.getElementById('voice-timer');
+  const supportEl = document.getElementById('voice-support');
+
+  if (!SR) {
+    supportEl.textContent = 'このブラウザは音声の文字起こしに対応していません（Chrome / Safari をお使いください）。文字起こし済みのテキストを貼り付けてもマニュアルを作成できます。';
+    recBtn.disabled = true;
+  }
+  if (currentUser.role === 'boss') {
+    document.getElementById('voice-to-manual-btn').classList.remove('hidden');
+  }
+
+  recBtn.addEventListener('click', () => {
+    if (voiceRecognition) { voiceRecognition.stop(); return; }
+    voiceRecognition = new SR();
+    voiceRecognition.lang = 'ja-JP';
+    voiceRecognition.continuous = true;
+    voiceRecognition.interimResults = true;
+    const base = transcriptEl.value ? transcriptEl.value.replace(/\s+$/, '') + '\n' : '';
+    let finals = '';
+    voiceRecognition.onresult = (e) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) finals += r[0].transcript + '。';
+        else interim += r[0].transcript;
+      }
+      transcriptEl.value = base + finals + interim;
+      transcriptEl.scrollTop = transcriptEl.scrollHeight;
+    };
+    voiceRecognition.onerror = (e) => {
+      supportEl.textContent = e.error === 'not-allowed' ? 'マイクの使用が許可されていません。' : `文字起こしエラー：${e.error}`;
+    };
+    voiceRecognition.onend = () => {
+      voiceRecognition = null;
+      recBtn.textContent = '🎙 録音開始';
+      recBtn.classList.remove('recording');
+      clearInterval(voiceTimerId);
+      timerEl.textContent = '';
+    };
+    voiceRecognition.start();
+    supportEl.textContent = '';
+    recBtn.textContent = '■ 録音停止';
+    recBtn.classList.add('recording');
+    const start = Date.now();
+    voiceTimerId = setInterval(() => {
+      const sec = Math.floor((Date.now() - start) / 1000);
+      timerEl.textContent = `● ${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
+    }, 500);
+  });
+
+  document.getElementById('voice-text-file').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    transcriptEl.value = (transcriptEl.value ? transcriptEl.value + '\n' : '') + (await file.text());
+    e.target.value = '';
+  });
+
+  document.getElementById('voice-manual-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const transcript = transcriptEl.value.trim();
+    const statusEl = document.getElementById('voice-status');
+    if (!transcript) { statusEl.textContent = '先に録音するか、文字起こしを貼り付けてください。'; return; }
+    if (voiceRecognition) voiceRecognition.stop();
+    statusEl.textContent = 'マニュアルを作成中です…（Claude APIを呼び出しています）';
+    document.getElementById('voice-result-wrap').classList.add('hidden');
+    try {
+      const { manual } = await api('/api/ai/manual-from-voice', {
+        method: 'POST',
+        body: JSON.stringify({ transcript, hint: document.getElementById('voice-hint').value.trim() })
+      });
+      voiceManual = manual;
+      statusEl.textContent = '';
+      renderVoiceManual(manual);
+      document.getElementById('voice-action-status').textContent = '';
+      document.getElementById('voice-result-wrap').classList.remove('hidden');
+    } catch (err) {
+      statusEl.textContent = err.message;
+    }
+  });
+
+  document.getElementById('voice-copy-btn').addEventListener('click', () => {
+    if (voiceManual) navigator.clipboard.writeText(voiceManualToMarkdown(voiceManual));
+  });
+
+  document.getElementById('voice-to-manual-btn').addEventListener('click', async () => {
+    if (!voiceManual) return;
+    const statusEl = document.getElementById('voice-action-status');
+    try {
+      await api('/api/manual', {
+        method: 'POST',
+        body: JSON.stringify({ category: '技術要点', title: voiceManual.title, description: voiceManualToPlainText(voiceManual) })
+      });
+      statusEl.textContent = `「${voiceManual.title}」をマニュアル（技術要点）に登録しました。`;
+      loadManualList();
+    } catch (err) {
+      statusEl.textContent = err.message;
+    }
+  });
+
+  document.getElementById('voice-to-sphere-btn').addEventListener('click', async () => {
+    if (!voiceManual) return;
+    const statusEl = document.getElementById('voice-action-status');
+    const btn = document.getElementById('voice-to-sphere-btn');
+    btn.disabled = true;
+    try {
+      const count = await importManualToSphere(voiceManual);
+      statusEl.textContent = `技術伝承の球体に 工程「${voiceManual.process || voiceManual.title}」と ${count} 個の点（コツ）を入れました。「技術伝承」タブで回して確認できます。`;
+    } catch (err) {
+      statusEl.textContent = `技術伝承への追加に失敗しました：${err.message}`;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
+function renderVoiceManual(m) {
+  const el = document.getElementById('voice-result');
+  const steps = m.steps.map((st, i) => `
+    <li>
+      <strong>${escapeHtml(st.title)}</strong> <span class="voice-step-tag">${escapeHtml(st.tag)}</span>
+      <div>${escapeHtml(st.body)}</div>
+      ${st.caution ? `<div class="voice-caution">⚠ ${escapeHtml(st.caution)}</div>` : ''}
+    </li>`).join('');
+  el.innerHTML = `
+    <h1>${escapeHtml(m.title)}</h1>
+    ${m.process ? `<p><strong>工程：</strong>${escapeHtml(m.process)}</p>` : ''}
+    ${m.summary ? `<p>${escapeHtml(m.summary)}</p>` : ''}
+    <h2>手順</h2>
+    <ol>${steps}</ol>
+    ${m.tips.length ? `<h2>コツ・勘所</h2><ul>${m.tips.map((t) => `<li>${escapeHtml(t)}</li>`).join('')}</ul>` : ''}
+    ${m.questions.length ? `<h2>ベテランに確認したいこと</h2><ul>${m.questions.map((q) => `<li>${escapeHtml(q)}</li>`).join('')}</ul>` : ''}`;
+}
+
+function voiceManualToMarkdown(m) {
+  const lines = [`# ${m.title}`, ''];
+  if (m.process) lines.push(`**工程：** ${m.process}`, '');
+  if (m.summary) lines.push(m.summary, '');
+  lines.push('## 手順', '');
+  m.steps.forEach((st, i) => {
+    lines.push(`${i + 1}. **${st.title}**（${st.tag}）`, `   ${st.body}`);
+    if (st.caution) lines.push(`   ⚠ ${st.caution}`);
+  });
+  if (m.tips.length) lines.push('', '## コツ・勘所', '', ...m.tips.map((t) => `- ${t}`));
+  if (m.questions.length) lines.push('', '## ベテランに確認したいこと', '', ...m.questions.map((q) => `- ${q}`));
+  return lines.join('\n');
+}
+
+function voiceManualToPlainText(m) {
+  const lines = [];
+  if (m.process) lines.push(`【工程】${m.process}`);
+  if (m.summary) lines.push(m.summary, '');
+  lines.push('【手順】');
+  m.steps.forEach((st, i) => {
+    lines.push(`${i + 1}. ${st.title}（${st.tag}）`, `　${st.body}`);
+    if (st.caution) lines.push(`　⚠ ${st.caution}`);
+  });
+  if (m.tips.length) lines.push('', '【コツ・勘所】', ...m.tips.map((t) => `・${t}`));
+  if (m.questions.length) lines.push('', '【ベテランに確認したいこと】', ...m.questions.map((q) => `・${q}`));
+  return lines.join('\n');
+}
+
+/* 技術伝承タブ（public/sphere/）と同じ IndexedDB「sphere-app」に書き込む（同一オリジンなので共有される） */
+function openSphereDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('sphere-app', 1);
+    req.onupgradeneeded = () => {
+      const d = req.result;
+      ['points', 'circles', 'links', 'media'].forEach((name) => {
+        if (!d.objectStoreNames.contains(name)) d.createObjectStore(name, { keyPath: 'id' });
+      });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+function sphereGetAll(db, store) {
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(store).objectStore(store).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+function spherePutMany(db, store, items) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    items.forEach((it) => tx.objectStore(store).put(it));
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+const sphereUid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+const SPHERE_CIRCLE_COLORS = ['#2d3a4f', '#c44a2f', '#3b7a57', '#7a5c3b', '#5b4b8a', '#2a7b9b', '#9b6a2a'];
+
+async function importManualToSphere(m) {
+  const db = await openSphereDB();
+  const circles = await sphereGetAll(db, 'circles');
+  const points = await sphereGetAll(db, 'points');
+  const processName = (m.process || m.title).slice(0, 20);
+  let circle = circles.find((c) => c.name === processName);
+  if (!circle) {
+    circle = { id: sphereUid(), name: processName, color: SPHERE_CIRCLE_COLORS[circles.length % SPHERE_CIRCLE_COLORS.length], order: circles.length };
+    await spherePutMany(db, 'circles', [circle]);
+  }
+  let order = points.filter((p) => p.circleId === circle.id).reduce((mx, p) => Math.max(mx, p.order ?? 0), -1) + 1;
+  const now = Date.now();
+  const speaker = currentUser.role === 'boss' ? 'veteran' : 'young';
+  const newPoints = m.steps.map((st) => ({
+    id: sphereUid(),
+    title: st.title,
+    body: st.body + (st.caution ? `\n⚠ ${st.caution}` : ''),
+    tag: st.tag,
+    state: 'seen',
+    perspective: '音声マニュアル',
+    circleId: circle.id,
+    order: order++,
+    speaker,
+    source: `音声マニュアル：${m.title}`,
+    createdAt: now,
+    updatedAt: now,
+    mediaId: null,
+    mediaType: '',
+    audioId: null
+  }));
+  m.tips.forEach((tip) => {
+    newPoints.push({
+      id: sphereUid(), title: tip.slice(0, 40), body: tip, tag: '目線', state: 'told', perspective: '音声マニュアル',
+      circleId: circle.id, order: order++, speaker, source: `音声マニュアル：${m.title}`, createdAt: now, updatedAt: now,
+      mediaId: null, mediaType: '', audioId: null
+    });
+  });
+  await spherePutMany(db, 'points', newPoints);
+  db.close();
+  if (!localStorage.getItem('sphere.tech')) localStorage.setItem('sphere.tech', m.title);
+  const frame = document.getElementById('sphere-frame');
+  if (frame && frame.contentWindow) frame.contentWindow.postMessage({ type: 'sphere:refresh' }, location.origin);
+  return newPoints.length;
 }
 
 /* ---------- ⑤ AI summary (boss only) ---------- */
@@ -1088,9 +1343,11 @@ async function init() {
   initManual();
   initChat();
   initKenpin();
+  initSphere();
   initAiHub();
   initAiChat();
   initAiSummary();
+  initAiVoiceManual();
 }
 
 init();
