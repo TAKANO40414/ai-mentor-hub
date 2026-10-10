@@ -83,6 +83,7 @@
         <button type="button" class="ai-mode-btn active" data-mode="chat">🗨️ AIチャット</button>
         <button type="button" class="ai-mode-btn hidden" data-mode="summary">🧠 AI要約</button>
         <button type="button" class="ai-mode-btn" data-mode="voice">🎙 音声からマニュアル</button>
+        <button type="button" class="ai-mode-btn" data-mode="kenpin">🔊 音声検品</button>
       </div>
 
       <div id="ai-mode-chat" class="ai-mode-panel">
@@ -159,6 +160,11 @@
             <p id="voice-action-status" class="empty-msg"></p>
           </div>
         </div>
+      </div>
+
+      <!-- 音くらべ検品 (browser-only audio inspection tool, loaded on first open) -->
+      <div id="ai-mode-kenpin" class="ai-mode-panel hidden">
+        <iframe id="kenpin-frame" class="kenpin-frame" title="音くらべ検品" data-src="otokurabe.html" allow="microphone"></iframe>
       </div>
     </section>
 
@@ -261,11 +267,6 @@
       </div>
     </section>
 
-    <!-- 音くらべ検品 (browser-only audio inspection tool) -->
-    <section id="tab-kenpin" class="tab-panel">
-      <iframe id="kenpin-frame" class="kenpin-frame" title="音くらべ検品" data-src="otokurabe.html" allow="microphone"></iframe>
-    </section>
-
     <!-- 球体を回す (技術伝承の暗黙知アプリ, public/sphere/) -->
     <section id="tab-sphere" class="tab-panel">
       <iframe id="sphere-frame" class="kenpin-frame sphere-frame" title="球体を回す" data-src="sphere/index.html" allow="camera; microphone"></iframe>
@@ -326,16 +327,6 @@
         <ellipse cx="24" cy="21" rx="2" ry="2.6" fill="#1a1a1a"/>
       </svg>
       <span class="tab-label">ai</span>
-    </button>
-    <button class="tab-btn" data-tab="kenpin">
-      <svg class="tab-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M8 16h5l7-6v20l-7-6H8a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2Z" fill="#0e7c86"/>
-        <path d="M25 14a8 8 0 0 1 0 12" stroke="#2fb6a3" stroke-width="2.5" stroke-linecap="round"/>
-        <path d="M29 10a14 14 0 0 1 0 20" stroke="#e0a63c" stroke-width="2.5" stroke-linecap="round"/>
-        <circle cx="31" cy="30" r="6.5" fill="#fff" stroke="#d64545" stroke-width="2"/>
-        <path d="m28.5 30 2 2 3.5-4" stroke="#d64545" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-      </svg>
-      <span class="tab-label">音声検品</span>
     </button>
     <button class="tab-btn" data-tab="sphere">
       <svg class="tab-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">

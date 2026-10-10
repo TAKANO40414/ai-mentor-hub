@@ -864,9 +864,9 @@ async function loadThread() {
   scrollChatToBottom();
 }
 
-/* ---------- 音くらべ検品 (self-contained page, loaded on first open) ---------- */
+/* ---------- 音くらべ検品 (self-contained page, AIタブ内のモードとして初回表示時に読み込む) ---------- */
 function initKenpin() {
-  document.querySelector('.tab-btn[data-tab="kenpin"]').addEventListener('click', () => {
+  document.querySelector('.ai-mode-btn[data-mode="kenpin"]').addEventListener('click', () => {
     const frame = document.getElementById('kenpin-frame');
     if (!frame.src) frame.src = frame.dataset.src;
   });
