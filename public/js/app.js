@@ -750,11 +750,13 @@ function renderManualList() {
         currentUser.role === 'boss'
           ? `<div class="manual-card-actions"><button type="button" class="small-btn danger-btn" data-delete-id="${item.id}">削除</button></div>`
           : '';
+      const sphere = `<div class="manual-card-actions"><button type="button" class="small-btn ghost-btn" data-sphere-id="${item.id}">◎ 技術伝承に入れる</button></div>`;
       return `<div class="manual-card">
         <div class="manual-card-meta"><span class="cat-tag"># ${escapeHtml(item.category)}</span>${meta ? escapeHtml(meta) : ''}</div>
         <div class="manual-card-title">${escapeHtml(item.title)}</div>
         ${desc}
         ${pdf}
+        ${sphere}
         ${del}
       </div>`;
     })
@@ -766,6 +768,71 @@ function renderManualList() {
       loadManualList();
     });
   });
+  container.querySelectorAll('[data-sphere-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const item = manualEntries.find((e) => e.id === btn.dataset.sphereId);
+      if (item) openManualToSphereModal(item);
+    });
+  });
+}
+
+/* マニュアル → 技術伝承（球体）：AIで手順に分けてから、確認して点として入れる */
+async function openManualToSphereModal(item) {
+  let manual = null;
+  openModal(
+    '技術伝承に入れる',
+    (body) => {
+      body.innerHTML = `<p class="modal-meta"><strong>${escapeHtml(item.title)}</strong></p><p id="m2s-status" class="empty-msg">AIがマニュアルを手順（点）に分けています…</p><div id="m2s-preview" class="ai-result hidden"></div>`;
+    },
+    (actions) => {
+      actions.appendChild(makeButton('やめる', 'ghost-btn', closeModal));
+    }
+  );
+  const statusEl = document.getElementById('m2s-status');
+  const previewEl = document.getElementById('m2s-preview');
+  const actionsEl = document.getElementById('modal-actions');
+
+  const showPreview = (m, note) => {
+    manual = m;
+    statusEl.textContent = note || `${m.steps.length} 個の手順と ${m.tips.length} 個のコツに分けました。内容を確認して「球体に入れる」を押してください。`;
+    previewEl.innerHTML = `
+      ${m.process ? `<p><strong>工程：</strong>${escapeHtml(m.process)}</p>` : ''}
+      <ol>${m.steps.map((st) => `<li><strong>${escapeHtml(st.title)}</strong> <span class="voice-step-tag">${escapeHtml(st.tag)}</span><div>${escapeHtml(st.body)}</div>${st.caution ? `<div class="voice-caution">⚠ ${escapeHtml(st.caution)}</div>` : ''}</li>`).join('')}</ol>
+      ${m.tips.length ? `<p><strong>コツ・勘所</strong></p><ul>${m.tips.map((t) => `<li>${escapeHtml(t)}</li>`).join('')}</ul>` : ''}`;
+    previewEl.classList.remove('hidden');
+    actionsEl.innerHTML = '';
+    actionsEl.appendChild(
+      makeButton('◎ 球体に入れる', '', async (e) => {
+        e.target.disabled = true;
+        try {
+          const n = await importManualToSphere(manual);
+          statusEl.textContent = `技術伝承の球体に 工程「${manual.process || manual.title}」と ${n} 個の点を入れました。「技術伝承」タブで回して確認できます。`;
+          previewEl.classList.add('hidden');
+          actionsEl.innerHTML = '';
+          actionsEl.appendChild(makeButton('閉じる', 'ghost-btn', closeModal));
+        } catch (err) {
+          statusEl.textContent = `追加に失敗しました：${err.message}`;
+          e.target.disabled = false;
+        }
+      })
+    );
+    actionsEl.appendChild(makeButton('やめる', 'ghost-btn', closeModal));
+  };
+
+  try {
+    const { manual: m } = await api(`/api/ai/manual-to-sphere/${item.id}`, { method: 'POST' });
+    showPreview(m);
+  } catch (err) {
+    if (item.description) {
+      // AIが使えないときは、マニュアル全体を1つの点として入れる
+      showPreview(
+        { title: item.title, process: item.category, summary: '', steps: [{ title: item.title.slice(0, 40), body: item.description, tag: '目線', caution: '' }], tips: [], questions: [] },
+        `AIで手順に分けられませんでした（${err.message}）。代わりに、マニュアル全体を1つの点として入れます。`
+      );
+    } else {
+      statusEl.textContent = `手順に分けられませんでした：${err.message}`;
+    }
+  }
 }
 
 /* ---------- ④ Chat ---------- */

@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const { requireAuth, requireBoss } = require('../middleware');
+const fs = require('fs');
+const path = require('path');
+const { readDB } = require('../data');
+const MANUAL_UPLOAD_DIR = path.join(__dirname, '..', '..', 'data', 'uploads');
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -172,7 +176,7 @@ router.post('/summarize-pdf', requireBoss, (req, res) => {
 });
 
 // 音声（文字起こし）からマニュアルを作成
-const VOICE_MANUAL_SYSTEM_PROMPT = `あなたは製造現場の技術伝承を手伝う編集者です。ベテランが口頭で語った作業の文字起こし（話し言葉、言い直し、脱線を含む）を、若手がそのまま現場で使えるマニュアルに整理します。
+const VOICE_MANUAL_SYSTEM_PROMPT = `あなたは製造現場の技術伝承を手伝う編集者です。入力（ベテランが口頭で語った文字起こし、または書かれたマニュアル文書・PDF）を、若手がそのまま現場で使える「手順ごとのマニュアル」に整理します。
 
 必ず次のJSONだけを出力してください（コードフェンスや説明文は不要）:
 {
@@ -203,6 +207,55 @@ function extractJson(text) {
   return JSON.parse(text.slice(start, end + 1));
 }
 
+function normalizeManual(manual, fallbackTitle) {
+  if (!Array.isArray(manual.steps) || !manual.steps.length) {
+    const err = new Error('手順を抽出できませんでした。内容を確認してください。');
+    err.status = 502;
+    throw err;
+  }
+  manual.steps = manual.steps.map((st) => ({
+    title: String(st.title || '').trim() || '（無題）',
+    body: String(st.body || '').trim(),
+    tag: ['手元', '目線', '機械'].includes(st.tag) ? st.tag : '手元',
+    caution: String(st.caution || '').trim()
+  }));
+  manual.tips = Array.isArray(manual.tips) ? manual.tips.map(String) : [];
+  manual.questions = Array.isArray(manual.questions) ? manual.questions.map(String) : [];
+  manual.title = String(manual.title || fallbackTitle || '音声マニュアル').trim();
+  manual.process = String(manual.process || '').trim();
+  manual.summary = String(manual.summary || '').trim();
+  return manual;
+}
+
+// 登録済みマニュアル（テキスト／PDF）を技術伝承の点（コツ）に分ける
+router.post('/manual-to-sphere/:id', requireAuth, async (req, res) => {
+  const db = readDB();
+  const entry = db.manualEntries.find((e) => e.id === req.params.id);
+  if (!entry) return res.status(404).json({ error: 'マニュアルが見つかりません。' });
+  const hintText = `マニュアルの題名：${entry.title}（カテゴリ：${entry.category}）`;
+  let content;
+  if (entry.storedFileName) {
+    const filePath = path.join(MANUAL_UPLOAD_DIR, entry.storedFileName);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'PDFファイルが見つかりません。' });
+    content = [
+      { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: fs.readFileSync(filePath).toString('base64') } },
+      { type: 'text', text: `${hintText}\n\n上記のPDFマニュアルを、指定のJSON形式で手順ごとに整理してください。` }
+    ];
+  } else if ((entry.description || '').trim()) {
+    content = `${hintText}\n\n=== マニュアル本文 ===\n${entry.description.slice(0, MAX_TEXT_LENGTH)}`;
+  } else {
+    return res.status(400).json({ error: 'このマニュアルには本文もPDFもありません。' });
+  }
+  try {
+    const raw = await callClaude([{ role: 'user', content }], VOICE_MANUAL_SYSTEM_PROMPT, 8192);
+    const manual = normalizeManual(extractJson(raw), entry.title);
+    manual.title = entry.title;
+    res.json({ manual, model: MODEL });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
 router.post('/manual-from-voice', requireAuth, async (req, res) => {
   const { transcript, hint } = req.body || {};
   const text = String(transcript || '').trim();
@@ -214,21 +267,7 @@ router.post('/manual-from-voice', requireAuth, async (req, res) => {
     (hint ? `作業名・技術名のヒント：${String(hint).slice(0, 200)}\n\n` : '') + `=== 文字起こし ===\n${text}`;
   try {
     const raw = await callClaude([{ role: 'user', content: userContent }], VOICE_MANUAL_SYSTEM_PROMPT, 8192);
-    const manual = extractJson(raw);
-    if (!Array.isArray(manual.steps) || !manual.steps.length) {
-      return res.status(502).json({ error: '手順を抽出できませんでした。文字起こしの内容を確認してください。' });
-    }
-    manual.steps = manual.steps.map((st) => ({
-      title: String(st.title || '').trim() || '（無題）',
-      body: String(st.body || '').trim(),
-      tag: ['手元', '目線', '機械'].includes(st.tag) ? st.tag : '手元',
-      caution: String(st.caution || '').trim()
-    }));
-    manual.tips = Array.isArray(manual.tips) ? manual.tips.map(String) : [];
-    manual.questions = Array.isArray(manual.questions) ? manual.questions.map(String) : [];
-    manual.title = String(manual.title || hint || '音声マニュアル').trim();
-    manual.process = String(manual.process || '').trim();
-    manual.summary = String(manual.summary || '').trim();
+    const manual = normalizeManual(extractJson(raw), hint);
     res.json({ manual, model: MODEL });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
