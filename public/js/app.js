@@ -1229,6 +1229,171 @@ async function importManualToSphere(m) {
   return newPoints.length;
 }
 
+/* ---------- 手書きをデータ化（写真 → 表／マニュアル → Excel・技術伝承） ---------- */
+let hwFiles = [];
+let hwResult = null;
+
+function initAiHandwriting() {
+  const input = document.getElementById('hw-files');
+  const previews = document.getElementById('hw-previews');
+  const statusEl = document.getElementById('hw-status');
+  if (currentUser.role === 'boss') document.getElementById('hw-to-manual-btn').classList.remove('hidden');
+
+  input.addEventListener('change', async () => {
+    const files = Array.from(input.files || []).slice(0, 6);
+    input.value = '';
+    if (!files.length) return;
+    statusEl.textContent = '写真を準備しています…';
+    hwFiles = [];
+    previews.innerHTML = '';
+    for (const f of files) {
+      const blob = await downscaleImage(f, 2000);
+      hwFiles.push(blob);
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(blob);
+      img.alt = f.name;
+      previews.appendChild(img);
+    }
+    document.getElementById('hw-count').textContent = `${hwFiles.length} 枚`;
+    statusEl.textContent = '';
+  });
+
+  document.getElementById('hw-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!hwFiles.length) { statusEl.textContent = '先に写真を選んでください。'; return; }
+    statusEl.textContent = '読み取っています…（Claude APIを呼び出しています。写真が多いと1分ほどかかります）';
+    document.getElementById('hw-result-wrap').classList.add('hidden');
+    const fd = new FormData();
+    hwFiles.forEach((b, i) => fd.append('images', b, `page${i + 1}.jpg`));
+    fd.append('mode', document.getElementById('hw-mode').value);
+    fd.append('hint', document.getElementById('hw-hint').value.trim());
+    try {
+      const { result } = await api('/api/ai/handwriting', { method: 'POST', body: fd });
+      hwResult = result;
+      statusEl.textContent = '';
+      renderHandwritingResult(result);
+      document.getElementById('hw-action-status').textContent = '';
+      document.getElementById('hw-result-wrap').classList.remove('hidden');
+    } catch (err) {
+      statusEl.textContent = err.message;
+    }
+  });
+
+  document.getElementById('hw-xlsx-btn').addEventListener('click', () => {
+    if (!hwResult) return;
+    const { title, columns, rows } = currentHandwritingTable();
+    if (!window.XLSX) { downloadCsv(title, columns, rows); return; }
+    const ws = XLSX.utils.aoa_to_sheet([columns, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, title.slice(0, 30) || 'Sheet1');
+    XLSX.writeFile(wb, `${title || '手書きデータ'}.xlsx`);
+  });
+  document.getElementById('hw-csv-btn').addEventListener('click', () => {
+    if (!hwResult) return;
+    const { title, columns, rows } = currentHandwritingTable();
+    downloadCsv(title, columns, rows);
+  });
+
+  document.getElementById('hw-to-manual-btn').addEventListener('click', async () => {
+    if (!hwResult) return;
+    const st = document.getElementById('hw-action-status');
+    try {
+      const description = hwResult.kind === 'manual' ? voiceManualToPlainText(currentHandwritingManual()) : tableToPlainText(currentHandwritingTable());
+      await api('/api/manual', { method: 'POST', body: JSON.stringify({ category: '技術要点', title: hwResult.title, description }) });
+      st.textContent = `「${hwResult.title}」をマニュアル（技術要点）に登録しました。`;
+      loadManualList();
+    } catch (err) {
+      st.textContent = err.message;
+    }
+  });
+
+  document.getElementById('hw-to-sphere-btn').addEventListener('click', () => {
+    if (!hwResult) return;
+    if (hwResult.kind === 'manual') {
+      const m = currentHandwritingManual();
+      openSphereImportModal({ title: m.title, load: async () => ({ manual: m }), fallback: null });
+    } else {
+      const t = currentHandwritingTable();
+      openSphereImportModal({ title: t.title, load: async () => ({ manual: tableToManual(t) }), fallback: null });
+    }
+  });
+}
+
+/* 大きな写真は長辺を制限してJPEGにしてから送る */
+function downscaleImage(file, maxSide) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+      if (scale === 1 && file.size < 4 * 1024 * 1024 && file.type === 'image/jpeg') { URL.revokeObjectURL(url); resolve(file); return; }
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((b) => { URL.revokeObjectURL(url); resolve(b || file); }, 'image/jpeg', 0.88);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
+function renderHandwritingResult(r) {
+  const el = document.getElementById('hw-result');
+  const unreadable = r.unreadable && r.unreadable.length ? `<p class="hw-unreadable">⚠ 判読できなかった箇所：${r.unreadable.map(escapeHtml).join('／')}</p>` : '';
+  if (r.kind === 'manual') {
+    renderVoiceManual(r.manual);
+    el.innerHTML = document.getElementById('voice-result').innerHTML + unreadable;
+    document.getElementById('voice-result').innerHTML = '';
+    document.getElementById('hw-xlsx-btn').classList.add('hidden');
+    document.getElementById('hw-csv-btn').classList.add('hidden');
+    return;
+  }
+  document.getElementById('hw-xlsx-btn').classList.remove('hidden');
+  document.getElementById('hw-csv-btn').classList.remove('hidden');
+  const { columns, rows } = r.table;
+  el.innerHTML = `<h1 contenteditable="true" id="hw-title">${escapeHtml(r.title)}</h1>
+    <p>${rows.length} 行 × ${columns.length} 列</p>
+    <div style="overflow:auto"><table class="hw-table" id="hw-table">
+      <thead><tr>${columns.map((c) => `<th contenteditable="true">${escapeHtml(c)}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map((row) => `<tr>${row.map((c) => `<td contenteditable="true">${escapeHtml(c)}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table></div>${unreadable}`;
+}
+
+/* 画面上で直した内容を読み取る */
+function currentHandwritingTable() {
+  const tbl = document.getElementById('hw-table');
+  const titleEl = document.getElementById('hw-title');
+  if (!tbl) return { title: hwResult.title, columns: hwResult.table.columns, rows: hwResult.table.rows };
+  const columns = Array.from(tbl.querySelectorAll('thead th')).map((th) => th.textContent.trim());
+  const rows = Array.from(tbl.querySelectorAll('tbody tr')).map((tr) => Array.from(tr.querySelectorAll('td')).map((td) => td.textContent.trim()));
+  return { title: (titleEl ? titleEl.textContent.trim() : '') || hwResult.title, columns, rows };
+}
+function currentHandwritingManual() {
+  return { ...hwResult.manual, title: hwResult.title };
+}
+function tableToPlainText({ columns, rows }) {
+  return [columns.join(' | '), ...rows.map((r) => r.join(' | '))].join('\n');
+}
+/* 表 → 技術伝承の点：1行を1つの点（コツ）にする */
+function tableToManual({ title, columns, rows }) {
+  // 番号だけの空行は点にしない
+  const steps = rows.filter((r) => r.some((c, i) => c && !(i === 0 && /^[\d０-９.\-]+$/.test(c)))).map((r) => {
+    const cells = r.map((c, i) => (c ? `${columns[i] || '列' + (i + 1)}：${c}` : '')).filter(Boolean);
+    const first = r.find((c) => c) || '';
+    return { title: first.slice(0, 40), body: cells.join('\n'), tag: '目線', caution: '' };
+  });
+  return { title, process: title.slice(0, 20), summary: '', steps, tips: [], questions: [] };
+}
+function downloadCsv(title, columns, rows) {
+  const esc = (v) => `"${String(v).replace(/"/g, '""')}"`;
+  const csv = '﻿' + [columns, ...rows].map((r) => r.map(esc).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = `${title || '手書きデータ'}.csv`;
+  a.click();
+}
+
 /* ---------- ⑤ AI summary (boss only) ---------- */
 function initAiSummary() {
   if (currentUser.role !== 'boss') return;
@@ -1440,6 +1605,7 @@ async function init() {
   initAiChat();
   initAiSummary();
   initAiVoiceManual();
+  initAiHandwriting();
 }
 
 init();

@@ -83,6 +83,7 @@
         <button type="button" class="ai-mode-btn active" data-mode="chat">🗨️ AIチャット</button>
         <button type="button" class="ai-mode-btn hidden" data-mode="summary">🧠 AI要約</button>
         <button type="button" class="ai-mode-btn" data-mode="voice">🎙 音声からマニュアル</button>
+        <button type="button" class="ai-mode-btn" data-mode="handwriting">📷 手書きをデータ化</button>
         <button type="button" class="ai-mode-btn" data-mode="kenpin">🔊 音声検品</button>
       </div>
 
@@ -166,6 +167,45 @@
       </div>
 
       <!-- 音くらべ検品 (browser-only audio inspection tool, loaded on first open) -->
+      <div id="ai-mode-handwriting" class="ai-mode-panel hidden">
+        <div class="card">
+          <h2>手書きをデータ化</h2>
+          <p class="empty-msg">手書きのマニュアル・リスト・帳面を写真に撮ると、Claude（AI）が読み取って表またはマニュアルにします。表は Excel に書き出せ、どちらも「技術伝承」タブの球体に入れられます。</p>
+
+          <h3>1. 写真を選ぶ</h3>
+          <div class="voice-controls">
+            <label class="btn-like">📷 写真を撮る／選ぶ<input type="file" id="hw-files" accept="image/*" multiple hidden /></label>
+            <span class="voice-timer" id="hw-count"></span>
+          </div>
+          <div id="hw-previews" class="hw-previews"></div>
+
+          <h3>2. 読み取る</h3>
+          <form id="hw-form" class="grid-form">
+            <select id="hw-mode">
+              <option value="auto">形式：自動で判断</option>
+              <option value="table">形式：表（リスト・帳面・チェックリスト）</option>
+              <option value="manual">形式：マニュアル（手順・注意書き）</option>
+            </select>
+            <input type="text" id="hw-hint" placeholder="文書の題名・内容のヒント（任意。例：DVD保存記録）" />
+            <button type="submit">AIで読み取る</button>
+          </form>
+          <p id="hw-status" class="empty-msg"></p>
+
+          <div id="hw-result-wrap" class="hidden">
+            <h3>3. 読み取り結果</h3>
+            <p class="empty-msg">表のセルはクリックして直せます。</p>
+            <div id="hw-result" class="ai-result"></div>
+            <div class="voice-actions">
+              <button type="button" id="hw-xlsx-btn">📊 Excel（.xlsx）で保存</button>
+              <button type="button" id="hw-csv-btn" class="ghost-btn small-btn">CSV で保存</button>
+              <button type="button" id="hw-to-sphere-btn">◎ 技術伝承に入れる</button>
+              <button type="button" id="hw-to-manual-btn" class="hidden">📘 マニュアルに登録（技術要点）</button>
+            </div>
+            <p id="hw-action-status" class="empty-msg"></p>
+          </div>
+        </div>
+      </div>
+
       <div id="ai-mode-kenpin" class="ai-mode-panel hidden">
         <iframe id="kenpin-frame" class="kenpin-frame" title="音くらべ検品" data-src="otokurabe.html" allow="microphone"></iframe>
       </div>
@@ -358,6 +398,7 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
   <script src="js/app.js"></script>

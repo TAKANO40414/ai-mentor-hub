@@ -274,6 +274,81 @@ router.post('/manual-from-voice', requireAuth, async (req, res) => {
   }
 });
 
+// 手書きのマニュアル・リスト・帳面の写真をデータ化
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 12 * 1024 * 1024, files: 6 },
+  fileFilter: (req, file, cb) => {
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.mimetype)) {
+      return cb(new Error('画像ファイル（JPEG・PNG・WebP・GIF）のみアップロードできます。'));
+    }
+    cb(null, true);
+  }
+});
+
+const HANDWRITING_SYSTEM_PROMPT = `あなたは現場の手書き文書をデータ化する担当者です。写真に写った手書き（または印刷）の文書を読み取り、内容に応じて「表」か「マニュアル（手順）」のどちらかの形に整理します。
+
+必ず次のJSONだけを出力してください（コードフェンスや説明文は不要）:
+{
+  "kind": "table" または "manual",
+  "title": "文書の題名（30文字以内。見出しが無ければ内容から付ける）",
+  "table": {
+    "columns": ["列名1", "列名2", ...],
+    "rows": [["値", "値", ...], ...]
+  },
+  "manual": {
+    "process": "工程名（10文字以内）",
+    "summary": "この文書の目的を1〜2文で",
+    "steps": [{ "title": "手順の名前（25文字以内）", "body": "具体的な内容", "tag": "手元 | 目線 | 機械", "caution": "注意点（無ければ空文字）" }],
+    "tips": ["コツ・勘所（0〜5個）"],
+    "questions": ["読み取れず確認が必要な点（0〜5個）"]
+  },
+  "unreadable": ["判読できなかった箇所の説明（0〜10個。例：3行目の品番の末尾）"]
+}
+
+ルール:
+- 台帳・一覧・チェックリスト・名簿など行と列がある文書は "table"。作業手順・注意書き・メモ書きのマニュアルは "manual"。指定があればそれに従う。
+- "table" のとき "manual" は {}、"manual" のとき "table" は {"columns":[],"rows":[]} にする。
+- 写真が複数あれば同じ文書の続きとして1つにまとめる。行の順番と列の対応を崩さない。
+- 読めない文字は推測で埋めず "?" と書き、unreadable に場所を書く。空欄は空文字にする。
+- 数字・品番・日付は原文のまま。全角半角は原文に合わせる。`;
+
+router.post('/handwriting', requireAuth, (req, res) => {
+  imageUpload.array('images', 6)(req, res, async (uploadErr) => {
+    if (uploadErr) return res.status(400).json({ error: uploadErr.message });
+    if (!req.files || !req.files.length) return res.status(400).json({ error: '写真を1枚以上選んでください。' });
+    const mode = ['table', 'manual'].includes(req.body?.mode) ? req.body.mode : 'auto';
+    const hint = String(req.body?.hint || '').slice(0, 200);
+    const content = req.files.map((f) => ({ type: 'image', source: { type: 'base64', media_type: f.mimetype, data: f.buffer.toString('base64') } }));
+    content.push({
+      type: 'text',
+      text:
+        (hint ? `文書の題名・内容のヒント：${hint}\n` : '') +
+        (mode === 'table' ? '出力形式：表（table）で整理してください。\n' : mode === 'manual' ? '出力形式：マニュアル（manual）で整理してください。\n' : '出力形式：内容から表かマニュアルかを判断してください。\n') +
+        `写真は ${req.files.length} 枚です。上記の写真の手書き文書を読み取り、指定のJSON形式で出力してください。`
+    });
+    try {
+      const raw = await callClaude([{ role: 'user', content }], HANDWRITING_SYSTEM_PROMPT, 8192);
+      const data = extractJson(raw);
+      const result = { kind: data.kind === 'manual' ? 'manual' : 'table', title: String(data.title || hint || '手書き文書').trim().slice(0, 60), unreadable: Array.isArray(data.unreadable) ? data.unreadable.map(String).slice(0, 10) : [] };
+      if (result.kind === 'table') {
+        const t = data.table || {};
+        const columns = Array.isArray(t.columns) ? t.columns.map((c) => String(c ?? '')) : [];
+        const rows = Array.isArray(t.rows) ? t.rows.filter(Array.isArray).map((r) => r.map((c) => String(c ?? ''))) : [];
+        if (!columns.length || !rows.length) return res.status(502).json({ error: '表として読み取れませんでした。写真を撮り直すか、形式を「マニュアル」にしてお試しください。' });
+        const width = Math.max(columns.length, ...rows.map((r) => r.length));
+        result.table = { columns: [...columns, ...Array(width - columns.length).fill('')].map((c, i) => c || `列${i + 1}`), rows: rows.map((r) => [...r, ...Array(width - r.length).fill('')]) };
+      } else {
+        result.manual = normalizeManual(data.manual || {}, result.title);
+        result.manual.title = result.title;
+      }
+      res.json({ result, model: MODEL });
+    } catch (err) {
+      res.status(err.status || 500).json({ error: err.message });
+    }
+  });
+});
+
 // 技術伝承「球体を回す」タブ（public/sphere/）からのAI呼び出し
 router.post('/sphere', requireAuth, async (req, res) => {
   const { system, messages, maxTokens } = req.body || {};
